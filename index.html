@@ -23,6 +23,9 @@
   a:hover{text-decoration:underline}
   a.colab{display:inline-block;margin-left:8px;font-size:12.5px;font-weight:700;
           color:var(--teal);border:1px solid var(--line);border-radius:5px;padding:1px 7px}
+  td.k{white-space:nowrap;width:62px;font-weight:800;color:var(--ink);font-size:13.5px}
+  .tag{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;
+       color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
   .note{background:#fff7ed;border-left:3px solid #d97d17;padding:13px 17px;
         margin:20px 0;border-radius:0 6px 6px 0;font-size:14.5px}
   footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);
@@ -39,38 +42,54 @@
 </p>
 
 <div class="note">
-  이 페이지에는 <b>참고자료와 실습 노트북</b>만 올린다.
-  강의 슬라이드 · 퀴즈 · 과제 · 공지는 <b>LMS</b> 에서 확인할 것.
+  이 페이지에는 <b>참고자료와 Lab · HW 노트북</b>만 올린다.
+  강의 슬라이드 · 퀴즈 · 성적 · 공지는 <b>LMS</b> 에서 확인할 것.<br>
+  <b>제출 방법과 기한은 PLATO · Google Classroom 공지</b>를 따른다.
 </div>
 
 <h2>참고자료</h2>
 <p>수업에서 짧게 지나간 주제를 자세히 풀어 둔 문서다. <b>시험 범위가 아니다.</b></p>
 <table>
   <tr><th>Topic</th><th>주제</th><th>문서</th></tr>
-<tr><td class="n">Topic 01</td><td>확률의 공리 — 표본공간과 사건</td><td><a href="notes/W01_data_splitting.html">데이터를 나눈다는 것 — mini-batch · train/test split · CV</a> </td></tr>
-<tr><td class="n">Topic 01</td><td>확률의 공리 — 표본공간과 사건</td><td><a href="notes/W01_hash_table.html">해시와 해시 테이블 — 어떻게 한 번에 찾는가</a> </td></tr>
-<tr><td class="n">Topic 01</td><td>확률의 공리 — 표본공간과 사건</td><td><a href="notes/W01_vitali_set.html">길이를 잴 수 없는 집합 — 비탈리 집합</a> </td></tr>
+<tr><td class="n">Topic 01</td><td>확률의 공리 — 표본공간과 사건</td><td><a href="notes/T01_data_splitting.html">데이터를 나눈다는 것 — mini-batch · train/test split · CV</a></td></tr>
+<tr><td class="n">Topic 01</td><td>확률의 공리 — 표본공간과 사건</td><td><a href="notes/T01_hash_table.html">해시와 해시 테이블 — 어떻게 한 번에 찾는가</a></td></tr>
+<tr><td class="n">Topic 01</td><td>확률의 공리 — 표본공간과 사건</td><td><a href="notes/T01_vitali_set.html">길이를 잴 수 없는 집합 — 비탈리 집합</a></td></tr>
 </table>
 
-<h2>실습 노트북</h2>
-<p>수업 중 랩에서 쓰는 노트북이다. <b>해답은 올리지 않는다.</b></p>
+<h2>Lab &amp; HW 노트북</h2>
+<p>
+  <b>Lab</b> 은 수업 중에, <b>HW</b> 는 수업 뒤에 채워 제출한다. 둘 다 채점 대상이다.
+  <b>해답은 올리지 않는다.</b>
+</p>
 <table>
-  <tr><th>Topic</th><th>주제</th><th>노트북</th></tr>
-<tr><td class="n">Topic 00</td><td>오리엔테이션 — NumPy · matplotlib 준비운동</td><td><a href="labs/W00_onboarding.ipynb">W00_onboarding.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W00_onboarding.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 01</td><td>확률의 공리 — 표본공간과 사건</td><td><a href="labs/W01_lab.ipynb">W01_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W01_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 02</td><td>조건부 확률과 Bayes 정리</td><td><a href="labs/W02_lab.ipynb">W02_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W02_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 03</td><td>이산 확률변수와 기댓값</td><td><a href="labs/W03_lab.ipynb">W03_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W03_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 04</td><td>이산 분포 zoo</td><td><a href="labs/W04_lab.ipynb">W04_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W04_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 05</td><td>엔트로피와 KL divergence</td><td><a href="labs/W05_lab.ipynb">W05_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W05_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 06</td><td>연속 확률변수와 샘플링</td><td><a href="labs/W06_lab.ipynb">W06_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W06_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 07</td><td>정규분포</td><td><a href="labs/W07_lab.ipynb">W07_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W07_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 09</td><td>결합분포 · 공분산 · 상관계수</td><td><a href="labs/W09_lab.ipynb">W09_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W09_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 10</td><td>대수의 법칙과 중심극한정리</td><td><a href="labs/W10_lab.ipynb">W10_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W10_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 11</td><td>몬테카를로와 Bootstrap</td><td><a href="labs/W11_lab.ipynb">W11_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W11_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 12</td><td>최대가능도 추정 (MLE)</td><td><a href="labs/W12_lab.ipynb">W12_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W12_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 13</td><td>베이지안 추론</td><td><a href="labs/W13_lab.ipynb">W13_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W13_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 14</td><td>가설검정과 통계의 함정</td><td><a href="labs/W14_lab.ipynb">W14_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W14_lab.ipynb">Colab에서 열기</a></td></tr>
-<tr><td class="n">Topic 15</td><td>Markov chain 맛보기</td><td><a href="labs/W15_lab.ipynb">W15_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/W15_lab.ipynb">Colab에서 열기</a></td></tr>
+  <tr><th>Topic</th><th>주제</th><th>구분</th><th>자료</th></tr>
+<tr><td class="n">Topic 00</td><td>오리엔테이션 — NumPy · matplotlib 준비운동</td><td class="k">Lab</td><td><a href="labs/T00_onboarding.ipynb">T00_onboarding.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T00_onboarding.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="n" rowspan="2">Topic 01</td><td rowspan="2">확률의 공리 — 표본공간과 사건</td><td class="k">Lab</td><td><a href="labs/T01_lab.ipynb">T01_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T01_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="k">HW</td><td><a href="hw/T01_hw_template.ipynb">T01_hw_template.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/hw/T01_hw_template.ipynb">Colab에서 열기</a> · <a class="doc" href="https://github.com/inetguru/prob-stat-pnuace/blob/main/hw/T01_hw.md" target="_blank" rel="noopener">T01_hw.md</a> <span class="tag">설명·루브릭</span></td></tr>
+<tr><td class="n" rowspan="2">Topic 02</td><td rowspan="2">조건부 확률과 Bayes 정리</td><td class="k">Lab</td><td><a href="labs/T02_lab.ipynb">T02_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T02_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="k">HW</td><td><a class="doc" href="https://github.com/inetguru/prob-stat-pnuace/blob/main/hw/T02_hw.md" target="_blank" rel="noopener">T02_hw.md</a> <span class="tag">설명·루브릭</span></td></tr>
+<tr><td class="n" rowspan="2">Topic 03</td><td rowspan="2">이산 확률변수와 기댓값</td><td class="k">Lab</td><td><a href="labs/T03_lab.ipynb">T03_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T03_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="k">HW</td><td><a class="doc" href="https://github.com/inetguru/prob-stat-pnuace/blob/main/hw/T03_hw.md" target="_blank" rel="noopener">T03_hw.md</a> <span class="tag">설명·루브릭</span></td></tr>
+<tr><td class="n" rowspan="2">Topic 04</td><td rowspan="2">이산 분포 zoo</td><td class="k">Lab</td><td><a href="labs/T04_lab.ipynb">T04_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T04_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="k">HW</td><td><a class="doc" href="https://github.com/inetguru/prob-stat-pnuace/blob/main/hw/T04_hw.md" target="_blank" rel="noopener">T04_hw.md</a> <span class="tag">설명·루브릭</span></td></tr>
+<tr><td class="n" rowspan="2">Topic 05</td><td rowspan="2">엔트로피와 KL divergence</td><td class="k">Lab</td><td><a href="labs/T05_lab.ipynb">T05_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T05_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="k">HW</td><td><a class="doc" href="https://github.com/inetguru/prob-stat-pnuace/blob/main/hw/T05_hw.md" target="_blank" rel="noopener">T05_hw.md</a> <span class="tag">설명·루브릭</span></td></tr>
+<tr><td class="n" rowspan="2">Topic 06</td><td rowspan="2">연속 확률변수와 샘플링</td><td class="k">Lab</td><td><a href="labs/T06_lab.ipynb">T06_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T06_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="k">HW</td><td><a class="doc" href="https://github.com/inetguru/prob-stat-pnuace/blob/main/hw/T06_hw.md" target="_blank" rel="noopener">T06_hw.md</a> <span class="tag">설명·루브릭</span></td></tr>
+<tr><td class="n" rowspan="2">Topic 07</td><td rowspan="2">정규분포</td><td class="k">Lab</td><td><a href="labs/T07_lab.ipynb">T07_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T07_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="k">HW</td><td><a class="doc" href="https://github.com/inetguru/prob-stat-pnuace/blob/main/hw/T07_hw.md" target="_blank" rel="noopener">T07_hw.md</a> <span class="tag">설명·루브릭</span></td></tr>
+<tr><td class="n" rowspan="2">Topic 09</td><td rowspan="2">결합분포 · 공분산 · 상관계수</td><td class="k">Lab</td><td><a href="labs/T09_lab.ipynb">T09_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T09_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="k">HW</td><td><a class="doc" href="https://github.com/inetguru/prob-stat-pnuace/blob/main/hw/T09_hw.md" target="_blank" rel="noopener">T09_hw.md</a> <span class="tag">설명·루브릭</span></td></tr>
+<tr><td class="n" rowspan="2">Topic 10</td><td rowspan="2">대수의 법칙과 중심극한정리</td><td class="k">Lab</td><td><a href="labs/T10_lab.ipynb">T10_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T10_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="k">HW</td><td><a class="doc" href="https://github.com/inetguru/prob-stat-pnuace/blob/main/hw/T10_hw.md" target="_blank" rel="noopener">T10_hw.md</a> <span class="tag">설명·루브릭</span></td></tr>
+<tr><td class="n">Topic 11</td><td>몬테카를로와 Bootstrap</td><td class="k">Lab</td><td><a href="labs/T11_lab.ipynb">T11_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T11_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="n" rowspan="2">Topic 12</td><td rowspan="2">최대가능도 추정 (MLE)</td><td class="k">Lab</td><td><a href="labs/T12_lab.ipynb">T12_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T12_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="k">HW</td><td><a class="doc" href="https://github.com/inetguru/prob-stat-pnuace/blob/main/hw/T12_hw.md" target="_blank" rel="noopener">T12_hw.md</a> <span class="tag">설명·루브릭</span></td></tr>
+<tr><td class="n" rowspan="2">Topic 13</td><td rowspan="2">베이지안 추론</td><td class="k">Lab</td><td><a href="labs/T13_lab.ipynb">T13_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T13_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="k">HW</td><td><a class="doc" href="https://github.com/inetguru/prob-stat-pnuace/blob/main/hw/T13_hw.md" target="_blank" rel="noopener">T13_hw.md</a> <span class="tag">설명·루브릭</span></td></tr>
+<tr><td class="n" rowspan="2">Topic 14</td><td rowspan="2">가설검정과 통계의 함정</td><td class="k">Lab</td><td><a href="labs/T14_lab.ipynb">T14_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T14_lab.ipynb">Colab에서 열기</a></td></tr>
+<tr><td class="k">HW</td><td><a class="doc" href="https://github.com/inetguru/prob-stat-pnuace/blob/main/hw/T14_hw.md" target="_blank" rel="noopener">T14_hw.md</a> <span class="tag">설명·루브릭</span></td></tr>
+<tr><td class="n">Topic 15</td><td>Markov chain 맛보기</td><td class="k">Lab</td><td><a href="labs/T15_lab.ipynb">T15_lab.ipynb</a> <a class="colab" target="_blank" rel="noopener" href="https://colab.research.google.com/github/inetguru/prob-stat-pnuace/blob/main/labs/T15_lab.ipynb">Colab에서 열기</a></td></tr>
 </table>
 
 <footer>
