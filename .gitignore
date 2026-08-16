@@ -1,0 +1,9 @@
+# 공개 저장소에 절대 들어가면 안 되는 것 — 이중 안전장치
+# (tools/build_site.py 가 애초에 복사하지 않지만, 손으로 넣는 사고를 막는다)
+*_solution.ipynb
+*quiz*
+*teacher*
+*script*
+*chan*
+.ipynb_checkpoints/
+__pycache__/
