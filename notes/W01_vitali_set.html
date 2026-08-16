@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>길이를 잴 수 없는 집합 — 비탈리 집합</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --ink:#0f172a; --body:#4b5768; --muted:#97a3b6; --line:#e6eaf1; --soft:#f7f9fc;
+    --bg:#ffffff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:48px 28px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{
+    font-size:21px; font-weight:800; color:var(--ink); margin:52px 0 14px;
+    padding-top:22px; border-top:2px solid var(--line);
+  }
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{
+    background:var(--soft); border:1px solid var(--line); border-radius:4px;
+    padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent);
+  }
+  .eq{
+    background:var(--soft); border-left:3px solid var(--accent);
+    padding:14px 18px; margin:16px 0; border-radius:0 6px 6px 0;
+    font-size:16px; color:var(--ink); overflow-x:auto;
+  }
+  .note{
+    background:#fff7ed; border-left:3px solid var(--orange);
+    padding:14px 18px; margin:18px 0; border-radius:0 6px 6px 0; font-size:15px;
+  }
+  .note b{color:#b45309}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .card{
+    background:var(--soft); border:1px solid var(--line);
+    border-radius:8px; padding:14px 16px; font-size:14.5px;
+  }
+  .card .lbl{
+    display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+    color:var(--accent); background:#eef1fe; border-radius:3px;
+    padding:2px 7px; margin-bottom:7px;
+  }
+  /* ── 시각화 ── */
+  .viz{
+    border:1px solid var(--line); border-radius:12px;
+    padding:22px; margin:26px 0; background:#fff;
+  }
+  .stage{
+    display:flex; gap:26px; align-items:flex-start; flex-wrap:wrap;
+  }
+  canvas{
+    border-radius:10px; background:var(--soft); flex:0 0 auto;
+    max-width:100%; height:auto;
+  }
+  .panel{flex:1 1 300px; min-width:280px}
+  .steps{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:16px}
+  button{
+    font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--body);
+    border-radius:7px; padding:8px 13px; transition:all .12s;
+  }
+  button:hover{border-color:var(--accent); color:var(--accent)}
+  button.on{background:var(--accent); border-color:var(--accent); color:#fff}
+  .ctl{margin:16px 0 4px; font-size:13.5px}
+  .ctl label{display:block; color:var(--muted); font-weight:700; margin-bottom:5px}
+  input[type=range]{width:100%; accent-color:var(--accent)}
+  #say{
+    background:var(--soft); border-radius:8px; padding:14px 16px;
+    font-size:14.5px; min-height:96px; border:1px solid var(--line);
+  }
+  #say b{display:block; color:var(--ink); margin-bottom:4px}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:12px; font-size:13px}
+  .legend i{
+    display:inline-block; width:11px; height:11px; border-radius:50%;
+    margin-right:5px; vertical-align:-1px;
+  }
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  .bad{color:#b91c1c; font-weight:700}
+  .ok{color:var(--teal); font-weight:700}
+  ul{padding-left:22px} li{margin:6px 0}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:720px){ .cards{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>길이를 잴 수 없는 집합</h1>
+<p class="sub">
+  확률통계 · Topic 1 보충자료 — 슬라이드 15번 <b>"𝓕 는 왜 따로 필요한가?"</b> 의 근거
+</p>
+
+<p>
+  슬라이드에서 <b>"길이를 잴 수 없는 괴상한 부분집합이 실제로 존재한다"</b> 고만 말하고 넘어갔다.
+  그 집합이 무엇인지, 왜 길이를 못 재는지를 여기에 적어 둔다.
+  1906년 <b>주세페 비탈리(Giuseppe Vitali)</b> 가 만든 예라 <b>비탈리 집합</b>이라 부른다.
+</p>
+
+<h2>1. "길이를 잰다"는 것이 요구하는 세 가지</h2>
+
+<p>
+  구간 <code>[0,1)</code> 의 부분집합에 길이를 붙이고 싶다. 다만 아무렇게나 붙이면 안 되고,
+  아래 셋은 지켜야 "길이"라 부를 만하다.
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">① 구간</span>
+    <b>구간의 길이는 끝점의 차</b><br>
+    <code>[a,b)</code> 의 길이는 <code>b − a</code>. 특히 <code>[0,1)</code> 은 1이다.
+  </div>
+  <div class="card">
+    <span class="lbl">② 가산가법성</span>
+    <b>겹치지 않게 쪼개면 더해진다</b><br>
+    서로 겹치지 않는 조각이 <b>가산 개</b> 있으면, 전체 길이는 조각 길이의 합이다.
+  </div>
+  <div class="card">
+    <span class="lbl">③ 평행이동 불변</span>
+    <b>옮겨도 길이는 그대로</b><br>
+    집합을 통째로 오른쪽으로 밀어도 길이가 변하지 않는다.
+  </div>
+</div>
+
+<p>
+  ②는 확률의 공리 <b>A3(가법성)</b> 과 같은 요구다. ③은 "자를 어디에 대든 결과가 같아야 한다"는
+  당연한 요구다. <b>그런데 이 셋을 모두 만족시키면서 <em>모든</em> 부분집합에 길이를 붙이는 것은 불가능하다.</b>
+  아래가 그 반례다.
+</p>
+
+<h2>2. 비탈리 집합 만들기</h2>
+
+<p>
+  <code>[0,1)</code> 을 직선 대신 <b>둘레가 1인 원</b>으로 보면 편하다.
+  그러면 "오른쪽으로 <code>q</code> 만큼 밀기"가 <b>원을 <code>q</code> 만큼 돌리기</b>가 되고,
+  1을 넘어가면 자동으로 처음으로 돌아온다.
+</p>
+
+<div class="viz">
+  <div class="stage">
+    <canvas id="cv" width="420" height="420"></canvas>
+    <div class="panel">
+      <div class="steps">
+        <button data-s="0" class="on">0 · 원</button>
+        <button data-s="1">1 · 한 무리</button>
+        <button data-s="2">2 · 여러 무리</button>
+        <button data-s="3">3 · 대표 뽑기</button>
+        <button data-s="4">4 · 돌려서 덮기</button>
+      </div>
+
+      <div id="say"></div>
+
+      <div class="ctl">
+        <label>회전에 쓸 유리수의 개수 <b id="nv">6</b> 개</label>
+        <input type="range" id="n" min="3" max="16" value="6">
+      </div>
+      <div class="ctl">
+        <label>보여줄 무리(동치류)의 개수 <b id="mv">4</b> 개</label>
+        <input type="range" id="m" min="2" max="10" value="4">
+      </div>
+
+      <div class="legend">
+        <span><i style="background:#3b4fd8"></i>같은 무리</span>
+        <span><i style="background:#d97d17"></i>대표 V</span>
+        <span><i style="background:#0d9488"></i>V 를 돌린 복사본</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>단계별로 무슨 일이 일어났나</h3>
+
+<table>
+  <tr><th style="width:64px">단계</th><th>내용</th></tr>
+  <tr><td><b>1</b></td><td>
+    점 하나를 잡고, 거기서 <b>유리수만큼 돌려 닿는 점들을 전부 모은다.</b>
+    이 한 무리를 <b>동치류</b>라 부른다. 같은 무리에 속한 두 점의 차이는 항상 유리수다.
+  </td></tr>
+  <tr><td><b>2</b></td><td>
+    무리를 여러 개 만든다. <b>서로 다른 무리는 한 점도 겹치지 않고</b>,
+    모든 무리를 합치면 원 전체가 된다.
+  </td></tr>
+  <tr><td><b>3</b></td><td>
+    <b>각 무리에서 점을 딱 하나씩 골라</b> 모은다. 이 집합이 <b>V</b> 다.
+    어느 점을 고르든 상관없다 — 그냥 "하나씩 고른다"고 선언한다.
+  </td></tr>
+  <tr><td><b>4</b></td><td>
+    V 를 유리수만큼 돌린 복사본을 전부 만들면, <b>원이 빈틈없이 정확히 한 번씩 덮인다.</b>
+  </td></tr>
+</table>
+
+<div class="note">
+  <b>⚠️ 위 그림은 진짜 V 가 아니다.</b>
+  진짜는 유리수를 <b>무한히</b> 써야 하고, 무리도 <b>무한히</b> 많다. 그림은 유한 개만 그린 흉내다.
+  <b>진짜 V 는 애초에 그릴 수가 없다</b> — 그리려면 각 무리에서 어느 점을 골랐는지 적어야 하는데,
+  그 선택에 아무 규칙이 없기 때문이다. 3단계에서 "그냥 하나씩 고른다고 선언한다"고 쓴 것이 그 뜻이고,
+  이 선언을 허용하는 것이 <b>선택공리(axiom of choice)</b> 다.
+</div>
+
+<h2>3. 그래서 왜 길이를 못 재나</h2>
+
+<p>V 에 길이가 있다고 <b>가정</b>하고, 그 값을 <code>L</code> 이라 하자. 4단계가 말해주는 것은 이렇다.</p>
+
+<div class="eq">
+  <b>[0,1) 전체</b> = V 를 <code>q</code> 만큼 돌린 복사본들의 합집합 &nbsp;(<code>q</code> 는 [0,1) 안의 모든 유리수)
+</div>
+
+<p>
+  유리수는 <b>가산 개</b>다. 복사본들은 서로 겹치지 않는다. 그러니 요구 ②를 쓸 수 있다.
+  그리고 요구 ③에 따라 <b>복사본의 길이는 전부 똑같이 <code>L</code></b> 이다. 돌리기만 했으니까.
+</p>
+
+<div class="eq">
+  1 = (전체 길이) = L + L + L + ⋯ &nbsp;&nbsp;(가산 개의 <code>L</code> 을 더한 값)
+</div>
+
+<p>이제 <code>L</code> 이 가질 수 있는 값을 따져 보면 <b>둘 다 막힌다.</b></p>
+
+<table>
+  <tr><th style="width:130px">가정</th><th>결과</th><th style="width:88px">판정</th></tr>
+  <tr>
+    <td><code>L = 0</code></td>
+    <td>0 을 아무리 많이(가산 개) 더해도 <b>0</b> 이다. 그런데 왼쪽은 1이다.</td>
+    <td class="bad">모순</td>
+  </tr>
+  <tr>
+    <td><code>L &gt; 0</code></td>
+    <td>같은 양수를 무한히 더하면 <b>무한대</b>로 발산한다. 그런데 왼쪽은 1이다.</td>
+    <td class="bad">모순</td>
+  </tr>
+</table>
+
+<p>
+  <b><code>L</code> 이 될 수 있는 값이 하나도 없다.</b> 가정이 틀렸다는 뜻이다 —
+  <b>V 에는 길이라는 것이 아예 존재하지 않는다.</b>
+  이런 집합을 <b>비가측(non-measurable) 집합</b>이라 부른다.
+</p>
+
+<div class="note">
+  <b>핵심은 "무한"이 만드는 틈이다.</b>
+  그림처럼 유리수를 <code>n</code> 개만 쓰면 모순이 없다. 조각이 <code>n</code> 개이고 각각 길이 <code>1/n</code>
+  이면 그만이다. <b>유리수가 무한히 많아지는 순간</b> "0을 무한히 더하기"와 "양수를 무한히 더하기"
+  사이에 <b>1이 들어갈 자리가 사라진다.</b>
+</div>
+
+<h2>4. 그래서 𝓕 가 필요하다</h2>
+
+<p>
+  모든 부분집합에 길이를 붙이려는 시도는 실패한다. 남은 선택지는 하나다 —
+  <b>길이를 붙일 수 있는 집합만 따로 모으고, 나머지는 아예 묻지 않는 것.</b>
+  그 모아 놓은 것이 <b>𝓕</b> 이고, 확률에서는 <b>"확률을 물어봐도 되는 사건들의 모음"</b> 이 된다.
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">Ω</span>
+    <b>무슨 일이 일어날 수 있나</b><br>
+    표본공간.
+  </div>
+  <div class="card">
+    <span class="lbl">𝓕</span>
+    <b>무엇에 확률을 물어봐도 되나</b><br>
+    비탈리 집합 같은 것을 <b>빼고</b> 모은 사건들.
+  </div>
+  <div class="card">
+    <span class="lbl">ℙ</span>
+    <b>그 값은 얼마인가</b><br>
+    𝓕 의 원소에만 값을 매긴다.
+  </div>
+</div>
+
+<p>
+  𝓕 가 갖춰야 할 성질(여집합에 닫혀 있고, 가산 합집합에 닫혀 있음)을 정식으로 쓴 것이
+  <b>σ-대수(σ-algebra)</b> 다. 확률의 세 공리 중 <b>A3 이 "가산 개"까지 확장되는 것</b>과
+  <b>𝓕 가 "가산 합집합에 닫혀야 하는 것"</b>이 서로 짝을 이룬다.
+</p>
+
+<div class="note">
+  <b>수업에서 안심시켜 줄 것</b> —
+  Ω 가 유한하거나 가산이면 이런 일이 <b>절대 일어나지 않는다.</b> 모든 부분집합에 확률을 붙일 수 있다.
+  동전·주사위·카드는 전부 여기 해당한다.
+  문제는 <b>Ω 가 연속(비가산)일 때만</b> 생기고, 그때조차 우리가 실제로 쓰는 집합
+  (구간, 구간의 합집합, 그 여집합…)은 전부 𝓕 안에 있다.
+  <b>즉 "존재하지만 마주칠 일은 없다."</b>
+</div>
+
+<h2>5. 곁다리 — 바나흐·타르스키</h2>
+
+<p>
+  같은 선택공리를 3차원 공에 적용하면 더 극적인 결과가 나온다.
+  <b>공 하나를 유한 개 조각으로 나눈 뒤, 돌리고 옮기기만 해서 똑같은 공 두 개를 만들 수 있다</b>
+  (바나흐–타르스키 역설, 1924). 부피가 두 배가 된 것처럼 보이지만 역설이 아니다 —
+  <b>그 조각들이 애초에 부피를 갖지 않기</b> 때문이다.
+  비탈리 집합과 뿌리가 같은 이야기이고, 학생이 흥미를 보이면 이름만 던져 줄 만하다.
+</p>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 1 슬라이드 15번 보충 &nbsp;·&nbsp; 참고: Chan §2.2.2 · Vitali (1905) · Banach–Tarski (1924)
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const cv  = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const say = document.getElementById('say');
+  const C = {accent:'#3b4fd8', teal:'#0d9488', orange:'#d97d17',
+             ink:'#0f172a', muted:'#97a3b6', line:'#e6eaf1'};
+
+  // 레티나 대응
+  const CSS = 420;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = CSS * dpr; cv.height = CSS * dpr;
+  cv.style.width = CSS + 'px'; cv.style.height = CSS + 'px';
+  ctx.scale(dpr, dpr);
+
+  const cx = CSS/2, cy = CSS/2, R = 150;
+  let step = 0, n = 6, m = 4, reps = [];
+
+  // 각 무리에서 고를 대표의 위치(무리 안 몇 번째인지)를 정해 둔다.
+  // ⚠️ 규칙 없이 고르는 것이 요점이라 무작위로 잡는다 — 선택공리의 임의성.
+  function pickReps(){
+    reps = Array.from({length:m}, () => Math.floor(Math.random()*n));
+  }
+  pickReps();
+
+  const pos = x => {                       // [0,1) → 원 위의 좌표 (12시에서 시계방향)
+    const t = -Math.PI/2 + 2*Math.PI*x;
+    return [cx + R*Math.cos(t), cy + R*Math.sin(t)];
+  };
+  const base = j => (2*j + 1) / (2*m*n);   // 무리 j 의 기준점 — [0, 1/n) 안에 균등하게
+
+  function dot(x, color, r){
+    const [px, py] = pos(x);
+    ctx.beginPath(); ctx.arc(px, py, r, 0, 2*Math.PI);
+    ctx.fillStyle = color; ctx.fill();
+  }
+
+  function ring(){
+    ctx.clearRect(0, 0, CSS, CSS);
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2*Math.PI);
+    ctx.strokeStyle = C.line; ctx.lineWidth = 16; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2*Math.PI);
+    ctx.strokeStyle = '#dfe5ef'; ctx.lineWidth = 1.5; ctx.stroke();
+    // 0 = 1 표시
+    ctx.fillStyle = C.muted; ctx.font = '600 13px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('0 = 1', cx, cy - R - 22);
+    ctx.textAlign = 'left';
+  }
+
+  function label(t1, t2){
+    ctx.fillStyle = C.ink; ctx.font = '800 15px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText(t1, cx, cy - 8);
+    ctx.fillStyle = C.muted; ctx.font = '600 12.5px system-ui';
+    ctx.fillText(t2, cx, cy + 14);
+    ctx.textAlign = 'left';
+  }
+
+  const TEXT = [
+    ['0 · 원으로 감은 [0,1)',
+     '왼쪽 끝 0 과 오른쪽 끝 1 을 붙여 둘레가 1 인 원으로 만들었다. 이제 "오른쪽으로 q 만큼 밀기"가 "q 만큼 돌리기"가 된다.'],
+    ['1 · 한 무리 = 동치류',
+     '점 하나를 잡고 유리수만큼 돌려 닿는 점을 전부 표시했다. 이 무리 안의 두 점은 차이가 항상 유리수다.'],
+    ['2 · 무리는 서로 겹치지 않는다',
+     '무리를 여러 개 그렸다. 색이 다르면 다른 무리다. 서로 한 점도 공유하지 않고, 다 합치면 원 전체가 된다.'],
+    ['3 · 각 무리에서 하나씩 = V',
+     '무리마다 점을 딱 하나씩 골라 굵게 칠했다. 이 주황 점들의 모임이 V 다. 어느 점을 고를지에 규칙이 없다는 점이 핵심이다.'],
+    ['4 · V 를 돌리면 원이 덮인다',
+     'V 를 유리수만큼 돌린 복사본을 모두 그렸다. 원의 모든 점이 정확히 한 번씩 덮인다. 여기서 모순이 시작된다.']
+  ];
+
+  function draw(){
+    ring();
+    if (step === 0){
+      label('둘레가 1 인 원', '[0,1) 을 감았다');
+    }
+    if (step === 1){
+      for (let k = 0; k < n; k++) dot(base(0) + k/n, C.accent, 5.5);
+      label('한 무리 = ' + n + '개', '유리수만큼 돌려 닿는 점들');
+    }
+    if (step === 2){
+      const cols = ['#3b4fd8','#0d9488','#8b5cf6','#d9457f','#0284c7','#65a30d',
+                    '#c2410c','#7e22ce','#0f766e','#b45309'];
+      for (let j = 0; j < m; j++)
+        for (let k = 0; k < n; k++) dot(base(j) + k/n, cols[j % cols.length], 5);
+      label(m + '개의 무리', '서로 겹치지 않는다');
+    }
+    if (step === 3){
+      for (let j = 0; j < m; j++)
+        for (let k = 0; k < n; k++)
+          dot(base(j) + k/n, k === reps[j] ? C.orange : '#d8dee9',
+              k === reps[j] ? 7.5 : 4);
+      label('V — 무리마다 하나씩', m + '개를 골랐다');
+    }
+    if (step === 4){
+      for (let k = 0; k < n; k++)
+        for (let j = 0; j < m; j++)
+          dot(base(j) + (reps[j] + k) / n % 1, k === 0 ? C.orange : C.teal,
+              k === 0 ? 7 : 5);
+      label('V 의 복사본 ' + n + '개', '원이 빈틈없이 덮였다');
+    }
+    say.innerHTML = '<b>' + TEXT[step][0] + '</b>' + TEXT[step][1];
+  }
+
+  document.querySelectorAll('.steps button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.steps button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      step = +b.dataset.s;
+      draw();
+    });
+  });
+  document.getElementById('n').addEventListener('input', e => {
+    n = +e.target.value; document.getElementById('nv').textContent = n;
+    pickReps(); draw();
+  });
+  document.getElementById('m').addEventListener('input', e => {
+    m = +e.target.value; document.getElementById('mv').textContent = m;
+    pickReps(); draw();
+  });
+
+  draw();
+})();
+</script>
+</body>
+</html>
