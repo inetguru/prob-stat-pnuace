@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>데이터를 나눈다는 것 — mini-batch · train/test split · cross-validation</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .key{background:#eef1fe; border-left:3px solid var(--accent); padding:14px 18px;
+       margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  .card.bad .lbl{color:#b45309; background:var(--warn)}
+  .card.good .lbl{color:var(--teal); background:#e6f5f3}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  ul{padding-left:22px} li{margin:6px 0}
+
+  /* ── 공통 시연 틀 ── */
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h4{margin:0 0 14px; font-size:15px; color:var(--ink); font-weight:800}
+  .ctl{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:16px}
+  button{font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--body);
+    border-radius:7px; padding:8px 13px; transition:all .12s}
+  button:hover:not(:disabled){border-color:var(--accent); color:var(--accent)}
+  button:disabled{opacity:.45; cursor:default}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  button.primary:hover:not(:disabled){filter:brightness(1.08); color:#fff}
+  select{font-family:inherit; font-size:13.5px; padding:7px 10px; color:var(--ink);
+         border:1px solid var(--line); border-radius:7px; background:#fff}
+  .hint{font-size:13px; color:var(--muted); margin-left:auto}
+  label.f{font-size:13.5px; color:var(--body); font-weight:700}
+
+  /* ── 데모 A · 분할 ── */
+  .pool{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; min-height:38px}
+  .dot{width:34px; height:34px; border-radius:8px; display:flex; align-items:center;
+       justify-content:center; font-size:13px; font-weight:800; color:#fff;
+       transition:transform .35s, opacity .35s}
+  .dot.A{background:var(--accent)}
+  .dot.B{background:var(--pink)}
+  .binlab{font-size:12.5px; font-weight:800; color:var(--muted); letter-spacing:.5px;
+          margin:14px 0 5px}
+  .bin{border:1.5px dashed var(--line); border-radius:9px; padding:9px; min-height:56px}
+  .bin.tr{border-color:#c3cbf5} .bin.te{border-color:#f5c3d6}
+  .mix{font-size:13px; margin-top:7px; font-family:Consolas,monospace}
+  .mix .warnx{color:var(--orange); font-weight:700}
+  .mix .okx{color:var(--teal); font-weight:700}
+
+  /* ── 데모 B · 미니배치 ── */
+  .chips{display:flex; gap:5px; flex-wrap:wrap; margin-bottom:14px}
+  .chip{width:30px; height:30px; border-radius:7px; display:flex; align-items:center;
+        justify-content:center; font-size:14px; font-weight:800; border:1.5px solid var(--line);
+        background:#fff; color:var(--muted); transition:all .2s}
+  .chip.one{background:#e6f5f3; border-color:var(--teal); color:var(--teal)}
+  .chip.now{transform:translateY(-5px); box-shadow:0 5px 14px rgba(59,79,216,.2);
+            border-color:var(--accent)}
+  .chip.done{opacity:.28}
+  .chart{position:relative; height:132px; border-bottom:1.5px solid var(--line);
+         display:flex; align-items:flex-end; gap:7px; margin-top:8px; padding-bottom:0}
+  .bar{flex:1; max-width:64px; background:var(--accent); border-radius:5px 5px 0 0;
+       position:relative; transition:height .3s; min-height:2px}
+  .bar span{position:absolute; top:-21px; left:0; right:0; text-align:center;
+            font-size:11.5px; font-weight:800; color:var(--accent);
+            font-family:Consolas,monospace}
+  .bar.far{background:var(--orange)} .bar.far span{color:var(--orange)}
+  .truth{position:absolute; left:0; right:0; border-top:2px dashed var(--teal); z-index:2}
+  .truth b{position:absolute; right:0; top:-20px; font-size:11.5px; color:var(--teal);
+           background:#fff; padding:0 5px; font-family:Consolas,monospace}
+  .axis{display:flex; gap:7px; margin-top:5px}
+  .axis div{flex:1; max-width:64px; text-align:center; font-size:11px; color:var(--muted)}
+  .stat{margin-top:14px; font-size:14px; color:var(--ink)}
+  .stat b{color:var(--accent); font-size:17px; font-family:Consolas,monospace}
+
+  /* ── 데모 C · 교차검증 ── */
+  .folds{display:flex; flex-direction:column; gap:7px}
+  .frow{display:flex; gap:6px; align-items:center}
+  .frow .rl{width:66px; font-size:12.5px; font-weight:800; color:var(--muted);
+            flex-shrink:0; font-family:Consolas,monospace}
+  .blk{flex:1; height:34px; border-radius:6px; border:1.5px solid var(--line);
+       background:var(--soft); display:flex; align-items:center; justify-content:center;
+       font-size:11.5px; font-weight:800; color:var(--muted); transition:all .3s}
+  .blk.va{background:#e6f5f3; border-color:var(--teal); color:var(--teal)}
+  .frow .sc{width:78px; text-align:right; font-size:13.5px; font-weight:800;
+            color:var(--muted); flex-shrink:0; font-family:Consolas,monospace}
+  .frow.on .rl{color:var(--accent)}
+  .frow.on .sc{color:var(--accent)}
+  .data15{display:flex; gap:5px; flex-wrap:wrap; margin-bottom:16px}
+  .d15{width:29px; height:29px; border-radius:7px; display:flex; align-items:center;
+       justify-content:center; font-size:13px; font-weight:800;
+       background:#e6f5f3; color:var(--teal); border:1.5px solid #b9e2dc}
+  .d15.miss{background:var(--warn); color:var(--orange); border-color:#f1cfa4}
+  .avg{margin-top:14px; padding-top:12px; border-top:1.5px solid var(--line);
+       font-size:14.5px; color:var(--ink)}
+  .avg b{color:var(--teal); font-size:19px; font-family:Consolas,monospace}
+
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>데이터를 나눈다는 것</h1>
+<p class="sub">
+  확률통계 · Topic 1 보충자료 — 슬라이드 32번 <b>"오늘 배운 게 어디에 쓰이나"</b> 의 Data sampling
+</p>
+
+<p>
+  슬라이드에서 <b>"mini-batch, train/test split, cross-validation이 전부 표집 문제이다"</b>
+  라고만 하고 지나갔다. 이 셋은 머신러닝을 배우면 첫 주에 만나는 말인데,
+  정작 <b>왜 그렇게 하는지</b>는 확률을 모르면 설명이 안 된다.
+</p>
+<p>
+  이 문서는 셋이 각각 무엇인지, 그리고 셋이 왜 <b>같은 이야기의 세 얼굴</b>인지를 보인다.
+  머신러닝을 몰라도 읽을 수 있게 썼다. 시험 범위가 아니다.
+</p>
+
+<div class="note">
+  <b>미리 말해 둘 것 —</b> 이 문서에 "모델"이라는 말이 나오면
+  <b>입력을 받아 답을 내놓는 상자</b> 정도로 읽으면 된다.
+  안에서 무슨 일이 벌어지는지는 전혀 몰라도 이 글은 이해된다.
+</div>
+
+<h2>1. 셋은 사실 한 가지 이야기다</h2>
+
+<p>
+  Topic 1에서 우리는 <b>전체</b>를 <b>Ω</b> 라 부르고, 실제로 관찰한 것은
+  그중 <b>일부</b>라는 구도를 세웠다. 동전을 무한히 던질 수는 없어서 1,000번만 던졌고,
+  그래서 0.5가 아니라 0.475가 나왔다.
+</p>
+<p>
+  머신러닝에서 데이터를 다루는 방식은 <b>전부 이 구도의 반복</b>이다.
+  전체를 볼 수 없거나, 봐서는 안 되거나, 한 번 봐서는 못 믿을 때 <b>일부를 뽑는다.</b>
+</p>
+
+<table>
+  <tr><th style="width:150px">이름</th><th>무엇을 뽑나</th><th>왜 뽑나</th></tr>
+  <tr>
+    <td><b>train/test split</b></td>
+    <td>가진 데이터를 두 덩이로</td>
+    <td>봐서는 <b>안 되는</b> 것을 따로 떼어 둔다 — 시험문제를 미리 보면 안 되니까</td>
+  </tr>
+  <tr>
+    <td><b>mini-batch</b></td>
+    <td>학습용 데이터에서 매번 조금씩</td>
+    <td>전부 보면 <b>너무 느리다</b> — 일부로 방향만 잡는다</td>
+  </tr>
+  <tr>
+    <td><b>cross-validation</b></td>
+    <td>나누는 방식 자체를 여러 번</td>
+    <td>한 번 재고는 <b>못 믿는다</b> — 여러 번 재서 평균한다</td>
+  </tr>
+</table>
+
+<div class="key">
+  세 줄을 한 줄로 줄이면 이렇다 —
+  <b>일부만 보면 값이 흔들린다. 그 흔들림을 관리하는 세 가지 방법이다.</b>
+  Topic 1 오프너에서 본 "다섯 번 다 다른 궤적" 이 여기서 다시 나온다.
+</div>
+
+<h2>2. train/test split — 시험문제를 미리 보면 안 된다</h2>
+
+<p>
+  모델을 만들 때 데이터가 1,000개 있다고 하자. 1,000개를 전부 써서 모델을 만들고,
+  같은 1,000개로 성적을 매기면 어떻게 될까?
+</p>
+<p>
+  <b>거의 항상 아주 좋은 점수가 나온다.</b> 그리고 그 점수는 <b>아무 의미가 없다.</b>
+  1,000개를 통째로 외워버린 모델도 만점을 받기 때문이다.
+  우리가 알고 싶은 것은 "외운 것을 되뇌는 능력"이 아니라
+  <b>처음 보는 데이터에 대해서도 맞히는 능력</b> 이다.
+</p>
+
+<div class="cards c2">
+  <div class="card bad">
+    <span class="lbl">이렇게 하면 안 된다</span>
+    <b>1,000개로 배우고 같은 1,000개로 채점</b><br>
+    기출문제를 통째로 외운 학생에게 그 기출문제로 시험을 치는 것과 같다.
+    점수는 높지만 <b>실력을 잰 것이 아니다.</b>
+  </div>
+  <div class="card good">
+    <span class="lbl">이렇게 한다</span>
+    <b>800개로 배우고, 숨겨둔 200개로 채점</b><br>
+    200개는 학습 중에 <b>한 번도 보여주지 않는다.</b>
+    이 200개에서 나온 점수라야 "처음 보는 것에 대한 실력" 이다.
+  </div>
+</div>
+
+<p>
+  숨겨두는 쪽을 <b>test set</b>, 배우는 데 쓰는 쪽을 <b>train set</b> 이라고 부른다.
+  비율은 보통 8:2 나 7:3 을 쓴다.
+</p>
+
+<h3>그런데 어떻게 나눌 것인가</h3>
+
+<p>
+  여기서 Topic 1이 필요해진다. "그냥 앞에서부터 800개" 로 자르면 될까?
+  <b>안 된다.</b> 데이터가 어떤 순서로 저장돼 있는지 우리는 모르기 때문이다.
+</p>
+<p>
+  아래에서 직접 확인해 보자. 데이터 20개가 있고, 절반은 A 종류(파랑), 절반은 B 종류(분홍) 이다.
+  그런데 <b>파일에 A 가 먼저, B 가 나중에</b> 저장돼 있다 —
+  실제 데이터셋에서 아주 흔한 일이다. 라벨 순으로 정리해 두는 경우가 많으니까.
+</p>
+
+<div class="viz">
+  <h4>시연 ① — 어떻게 자르느냐가 결과를 바꾼다</h4>
+  <div class="ctl">
+    <button class="primary" id="cutRaw">그대로 앞에서 자르기</button>
+    <button class="primary" id="cutShuf">섞은 다음 자르기</button>
+    <button id="resetA">처음으로</button>
+    <span class="hint">20개를 14 : 6 (70:30) 으로 나눈다</span>
+  </div>
+
+  <div class="binlab">전체 데이터 (파일에 저장된 순서)</div>
+  <div class="pool" id="poolA"></div>
+
+  <div class="binlab" style="color:var(--accent)">TRAIN — 배우는 데 쓴다</div>
+  <div class="bin tr"><div class="pool" id="trA"></div></div>
+  <div class="mix" id="trMix"></div>
+
+  <div class="binlab" style="color:var(--pink)">TEST — 숨겨두고 채점에만 쓴다</div>
+  <div class="bin te"><div class="pool" id="teA"></div></div>
+  <div class="mix" id="teMix"></div>
+</div>
+
+<p>
+  <b>그대로 자르면</b> train 에는 A 가 10개 · B 가 4개, test 에는 <b>A 가 0개</b> · B 가 6개가 된다.
+  이 test set 으로는 <b>"A 를 맞히는 능력"을 아예 측정할 수 없다.</b>
+  모델이 A 를 전부 틀려도 점수에 반영되지 않는다. 점수는 나오지만 거짓말이다.
+</p>
+<p>
+  <b>섞은 다음 자르면</b> 두 쪽 모두 A 와 B 가 대략 반반 섞인다.
+  train 과 test 가 <b>같은 성격의 데이터</b>가 되고, 그제서야 점수가 의미를 가진다.
+</p>
+
+<div class="key">
+  Topic 1의 언어로 말하면 이렇다 —
+  섞는 행위는 <b>"모든 데이터가 test 로 뽑힐 확률을 같게" 만드는 장치</b> 다.
+  슬라이드 27번에서 "등확률을 언제 써도 되나" 를 물었고 답이
+  <b>"설계로 보장했을 때(무작위 추출)"</b> 였다. 이게 바로 그 설계다.
+</div>
+
+<h2>3. 무작위로 섞어도 운이 나쁠 수 있다</h2>
+
+<p>
+  섞으면 안전할까? 대체로 그렇지만 <b>항상은 아니다.</b>
+  20개 중 6개를 무작위로 골랐을 때, 하필 <b>6개가 전부 B</b> 일 수도 있다.
+  그 확률을 Topic 1의 도구로 직접 셀 수 있다.
+</p>
+
+<div class="eq">
+  ℙ[test 6개가 전부 B] &nbsp;=&nbsp; C(10, 6) / C(20, 6) &nbsp;=&nbsp; <b>210 / 38,760</b> &nbsp;≈&nbsp; <b>0.0054</b>
+  <br><span style="color:var(--muted);font-size:14px">← C(<i>n</i>, <i>r</i>) 은 <i>n</i> 개에서 <i>r</i> 개를 고르는 가짓수</span>
+</div>
+
+<p>
+  약 <b>185번에 한 번</b>이다. 드물지만 0은 아니다.
+  데이터가 적을수록, 그리고 한쪽 종류가 희귀할수록 이 확률은 커진다.
+  그래서 실제 도구에는 <b>계층 표집(stratified sampling)</b> 이라는 장치가 따로 있다 —
+  "A 와 B 의 비율을 train 과 test 에서 똑같이 맞춰라" 는 뜻이다.
+</p>
+
+<div class="note">
+  <b>여기가 이 과목의 쓸모다.</b> "섞으면 되겠지" 와 "섞어도 185번에 한 번은 이런 일이 난다" 는
+  전혀 다른 수준의 이해다. 뒤쪽을 말할 수 있으려면
+  <b>여사건 · 조합 · 등확률 가정</b>이 필요하다 — 전부 Topic 1에서 배운 것이다.
+</div>
+
+<h2>4. mini-batch — 전부 보지 않고 방향을 정한다</h2>
+
+<p>
+  모델을 학습시킨다는 것은, 아주 거칠게 말하면 이런 반복이다.
+</p>
+
+<div class="eq" style="font-size:15px">
+  ① 지금 얼마나 틀리는지 잰다 &nbsp;→&nbsp; ② 덜 틀리는 쪽으로 조금 고친다 &nbsp;→&nbsp; ① 로 돌아간다
+</div>
+
+<p>
+  문제는 ①이다. <b>데이터가 100만 개면 한 번 재는 데 100만 번의 계산</b>이 든다.
+  그걸 수천 번 반복해야 하니 감당이 안 된다.
+</p>
+<p>
+  그래서 이렇게 한다 — <b>매번 전부 재지 않고, 무작위로 32개만 뽑아서 잰다.</b>
+  이 32개 묶음이 <b>mini-batch</b> 다. 100만 번이 32번으로 줄어든다.
+</p>
+
+<h3>싸게 얻은 만큼 흔들린다</h3>
+
+<p>
+  당연히 공짜가 아니다. 32개로 잰 값은 100만 개로 잰 값과 <b>다르다.</b>
+  얼마나 다를까? 이것이 <b>정확히 Topic 1 오프너에서 본 그림</b>이다.
+  아래에서 배치 크기를 바꿔 가며 직접 확인해 보자.
+</p>
+
+<div class="viz">
+  <h4>시연 ② — 배치가 작을수록 크게 흔들린다</h4>
+  <div class="ctl">
+    <label class="f">배치 크기</label>
+    <select id="bs">
+      <option value="2">2 개</option>
+      <option value="4" selected>4 개</option>
+      <option value="6">6 개</option>
+      <option value="12">12 개</option>
+      <option value="24">24 개 (= 전체)</option>
+    </select>
+    <button class="primary" id="runB">1 에폭 실행</button>
+    <button id="newB">데이터 새로 만들기</button>
+    <span class="hint">1 = 맞힘 · 0 = 틀림 · 데이터 24개</span>
+  </div>
+
+  <div class="chips" id="chipsB"></div>
+
+  <div style="position:relative">
+    <div class="chart" id="chartB"></div>
+    <div class="truth" id="truthB"><b></b></div>
+  </div>
+  <div class="axis" id="axisB"></div>
+  <div class="stat" id="statB"></div>
+</div>
+
+<p>
+  배치 크기를 <b>2</b> 로 두고 돌려 보면 배치 평균이 0 과 1 사이를 마구 오간다.
+  <b>24</b> 로 두면 배치가 하나뿐이고 그 값은 참값과 정확히 같다.
+  중간값들은 그 사이 어딘가다.
+</p>
+
+<p>
+  흔들림의 크기는 계산할 수 있다. 값이 0 또는 1 이고 참 비율이 0.5 일 때,
+  배치 <i>n</i> 개로 잰 평균의 표준편차는 다음과 같다.
+</p>
+
+<div class="eq">
+  배치 <i>n</i> 개로 잰 평균의 <b>표준오차</b> &nbsp;=&nbsp; <b>σ / √<i>n</i></b> &nbsp;=&nbsp; <b>0.5 / √<i>n</i></b>
+</div>
+
+<table>
+  <tr><th>배치 크기 <i>n</i></th><th>4</th><th>16</th><th>64</th><th>256</th></tr>
+  <tr><td><b>흔들림 (표준오차)</b></td><td>0.250</td><td>0.125</td><td>0.0625</td><td>0.0312</td></tr>
+</table>
+
+<p style="font-size:14px;color:var(--muted)">
+  ※ 위 표는 <b>데이터가 아주 많을 때</b>의 값이다. 시연 ②는 데이터가 24개뿐이라
+  배치를 키울수록 "아직 안 뽑은 것"이 빠르게 줄어들고, 그래서 표시되는 이론값이 이 표보다 조금 작다.
+  배치 24에서는 배치가 곧 전체이므로 흔들림이 <b>정확히 0</b> 이 된다.
+</p>
+
+<div class="key">
+  <b>배치를 4배 키우면 흔들림은 절반으로 준다.</b> 4배가 아니라 2배다 —
+  √<i>n</i> 이 분모에 있기 때문이다.
+  Topic 1 슬라이드 7번에서 본 <b>0.159 → 0.050 → 0.016</b> 이 똑같은 법칙이다.
+  (<i>n</i> 이 10배일 때 √10 ≈ 3.16 배 줄어 대략 1/3.)
+</div>
+
+<p>
+  이 <b>√<i>n</i> 법칙</b>이 배치 크기를 정하는 실무의 근거다.
+  배치를 4배 키우면 계산은 4배 비싸지는데 정확도는 2배밖에 안 좋아진다.
+  <b>어디서 멈출 것인가</b>가 곧 트레이드오프다.
+  왜 하필 √<i>n</i> 인지는 <b>Topic 10</b> 에서 증명한다.
+</p>
+
+<div class="note">
+  <b>흔들림이 나쁘기만 한 것은 아니다.</b> 조금 부정확한 방향으로 움직이는 덕분에
+  모델이 엉뚱한 곳에 갇히지 않고 빠져나오기도 한다.
+  그래서 실무에서는 배치를 <b>일부러 아주 크게 잡지 않는다.</b>
+  다만 이 이야기는 확률통계의 범위를 넘어간다 — 최적화 과목의 몫이다.
+</div>
+
+<h2>5. cross-validation — 한 번 재고 믿지 않는다</h2>
+
+<p>
+  2절로 돌아가자. 데이터 100개를 80 : 20 으로 나눠 test 20개에서 85점을 받았다고 하자.
+  이 <b>85점을 얼마나 믿을 수 있을까?</b>
+</p>
+<p>
+  test 가 20개뿐이라는 게 문제다. 20개는 그 자체로 <b>작은 표본</b>이고,
+  4절에서 본 그대로 <b>작은 표본에서 잰 값은 흔들린다.</b>
+  모델의 진짜 실력이 85% 라 해도, 어떤 20개를 뽑았느냐에 따라 점수는 이만큼 오르내린다.
+</p>
+
+<div class="eq">
+  √( 0.85 × 0.15 / 20 ) &nbsp;=&nbsp; <b>0.080</b> &nbsp;&nbsp;⟹&nbsp;&nbsp; 점수는 약 <b>± 8 %p</b> 오르내린다
+</div>
+
+<p>
+  <b>85점이 사실은 77점일 수도, 93점일 수도 있다는 뜻이다.</b>
+  이 정도 오차로는 "모델 A 가 모델 B 보다 낫다" 같은 판단을 할 수 없다.
+</p>
+
+<h3>데이터를 더 구할 수 없다면</h3>
+
+<p>
+  가진 게 100개뿐이라면 test 를 키울 수 없다. test 를 40개로 늘리면 train 이 60개로 줄어
+  모델 자체가 나빠진다. <b>딜레마다.</b>
+</p>
+<p>
+  해법은 발상의 전환이다 — <b>나누는 방식을 하나로 고정하지 말고, 돌려가면서 여러 번 하자.</b>
+  데이터를 <i>k</i> 덩이로 쪼갠 뒤, 한 덩이씩 돌아가며 test 역할을 맡긴다.
+  이것이 <b><i>k</i>-fold cross-validation</b> 이다.
+</p>
+
+<div class="viz">
+  <h4>시연 ③ — 돌아가며 채점한다</h4>
+  <div class="ctl">
+    <label class="f">몇 덩이로 나눌까</label>
+    <select id="kk">
+      <option value="3">3-fold</option>
+      <option value="5" selected>5-fold</option>
+    </select>
+    <button class="primary" id="runC">돌려 보기</button>
+    <span class="hint">데이터 15개 · ● 맞힘 · ✕ 틀림</span>
+  </div>
+
+  <div class="data15" id="dataC"></div>
+  <div class="folds" id="foldsC"></div>
+  <div class="avg" id="avgC"></div>
+</div>
+
+<p>
+  돌려 보면 <b>개별 fold 의 점수는 크게 튄다.</b> 5-fold 면 한 fold 가 3개뿐이라
+  점수가 0, 0.333, 0.667, 1.000 네 가지 중 하나로만 나온다.
+  그런데 <b>평균은 언제나 0.800 이다.</b> <i>k</i> 를 3으로 바꿔도 평균은 그대로 0.800 이다.
+</p>
+
+<div class="key">
+  왜 항상 같은가? <b>모든 데이터가 정확히 한 번씩 test 를 거치기 때문이다.</b>
+  덩이 크기가 같으면 fold 점수들의 평균은
+  <b>"전체 15개를 한 번씩 채점한 결과"와 수학적으로 똑같다.</b>
+  test 를 20개가 아니라 <b>100개 전부</b>로 쓴 셈이 된다.
+</div>
+
+<p>
+  그래서 흔들림이 줄어든다. 100개 데이터로 5-fold 를 하면
+  실질적으로 100개 전부에서 채점한 것이므로,
+</p>
+
+<table>
+  <tr><th>방식</th><th>실질 채점 대상</th><th>점수의 흔들림</th></tr>
+  <tr><td>한 번만 80:20 으로 나누기</td><td>20개</td><td>± <b>8.0</b>%p</td></tr>
+  <tr><td>5-fold cross-validation</td><td>100개 전부</td><td>± <b>3.6</b>%p</td></tr>
+</table>
+
+<p>
+  <b>같은 100개 데이터인데 흔들림이 2.24배 차이난다.</b>
+  데이터를 한 개도 더 구하지 않고 얻은 개선이다.
+  대가는 계산량이다 — 모델을 <i>k</i> 번 학습시켜야 하므로 <i>k</i> 배 느리다.
+</p>
+
+<div class="note">
+  <b>덧 —</b> 위 표의 3.6%p 는 다소 낙관적인 값이다.
+  <i>k</i> 개의 fold 점수는 서로 완전히 독립이 아니기 때문이다
+  (train set 이 서로 겹친다). 그래도 <b>한 번만 나누는 것보다 훨씬 안정적</b> 이라는
+  결론은 바뀌지 않는다. 이 "독립이 아니다" 라는 말의 정확한 의미는 <b>Topic 9</b> 에서 다룬다.
+</div>
+
+<h2>6. 셋을 한 장으로</h2>
+
+<table>
+  <tr>
+    <th style="width:130px"></th>
+    <th>train/test split</th>
+    <th>mini-batch</th>
+    <th>cross-validation</th>
+  </tr>
+  <tr>
+    <td><b>언제</b></td>
+    <td>학습을 <b>시작하기 전</b> 한 번</td>
+    <td>학습 <b>도중</b> 매 순간</td>
+    <td>모델을 <b>평가할 때</b></td>
+  </tr>
+  <tr>
+    <td><b>왜</b></td>
+    <td>정직한 채점지를 확보하려고</td>
+    <td>계산을 감당하려고</td>
+    <td>점수를 믿을 만하게 만들려고</td>
+  </tr>
+  <tr>
+    <td><b>무작위성의 역할</b></td>
+    <td>두 덩이의 성격을 같게 만든다</td>
+    <td>치우친 방향으로 가지 않게 한다</td>
+    <td>모든 데이터에 채점 기회를 준다</td>
+  </tr>
+  <tr>
+    <td><b>흔들리는 것</b></td>
+    <td>측정된 점수</td>
+    <td>고칠 방향</td>
+    <td>(줄이는 것이 목적)</td>
+  </tr>
+  <tr>
+    <td><b>줄이는 법</b></td>
+    <td>test 를 키운다</td>
+    <td>배치를 키운다</td>
+    <td><i>k</i> 를 키운다</td>
+  </tr>
+</table>
+
+<div class="key">
+  다섯 줄이 전부 <b>같은 문장의 변주</b>다 —
+  <b>표본이 크면 흔들림이 작다. 대신 비싸다.</b>
+  이 한 문장이 데이터를 다루는 거의 모든 결정의 뒤에 있다.
+</div>
+
+<h2>7. 흔한 실수 네 가지</h2>
+
+<div class="cards c2">
+  <div class="card bad">
+    <span class="lbl">실수 1</span>
+    <b>test 를 보면서 모델을 고친다</b><br>
+    test 점수를 보고 설정을 바꾸고, 다시 재고, 또 바꾼다.
+    이러면 test 도 결국 <b>train 이 되어버린다.</b> 답을 보면서 공부한 셈이다.<br>
+    → 그래서 보통 <b>train / validation / test</b> 셋으로 나눈다.
+    고치는 동안은 validation 만 보고, test 는 <b>맨 마지막에 딱 한 번</b> 연다.
+  </div>
+  <div class="card bad">
+    <span class="lbl">실수 2</span>
+    <b>나누기 전에 데이터를 손본다</b><br>
+    1,000개 전체의 평균으로 정규화한 다음 나누면,
+    <b>test 의 정보가 이미 train 에 스며든다.</b>
+    점수가 실제보다 좋게 나온다.<br>
+    → <b>먼저 나누고</b>, train 에서 계산한 값만 test 에 적용한다.
+    이런 정보 누출을 <b>data leakage</b> 라고 부른다.
+  </div>
+  <div class="card bad">
+    <span class="lbl">실수 3</span>
+    <b>시간 순서가 있는 데이터를 무작위로 섞는다</b><br>
+    주가·기상·로그처럼 시간 순서가 있는 데이터를 섞어 나누면
+    <b>미래를 보고 과거를 맞히는</b> 모델이 된다. 점수는 훌륭하고 실전에서는 무용지물이다.<br>
+    → 시계열은 <b>시점으로 자른다.</b> 앞이 train, 뒤가 test.
+  </div>
+  <div class="card bad">
+    <span class="lbl">실수 4</span>
+    <b>배치를 섞지 않고 순서대로 먹인다</b><br>
+    데이터가 라벨 순으로 정렬돼 있으면, 배치 하나에 <b>같은 종류만</b> 들어간다.
+    A 만 잔뜩 보다가 B 만 잔뜩 보게 되니 방향이 갈지자로 요동친다.<br>
+    → <b>매 에폭마다 다시 섞는다.</b> 시연 ②의 "1 에폭 실행" 이 매번 섞는 이유다.
+  </div>
+</div>
+
+<p>
+  네 가지가 전부 <b>같은 실수의 변형</b>이다 —
+  <b>test 로 쓸 것과 train 으로 쓸 것의 경계를 흐리는 것.</b>
+  경계가 한 번 흐려지면 그 뒤에 나오는 모든 숫자를 믿을 수 없게 된다.
+</p>
+
+<h2>8. 여기서 멈추는 자리</h2>
+
+<p>
+  이 문서는 <b>"왜 나누는가"</b> 까지만 다뤘다. 그 앞으로는 도구가 더 필요하다.
+</p>
+
+<table>
+  <tr><th style="width:44%">더 나아간 질문</th><th style="width:30%">필요한 도구</th><th>어디서</th></tr>
+  <tr><td>배치 평균의 <b>기댓값</b>이 참값과 같은가?</td><td>기댓값, 불편성</td><td><b>Topic 3</b></td></tr>
+  <tr><td>왜 하필 σ / √<i>n</i> 인가?</td><td>분산의 성질, 독립</td><td><b>Topic 9</b></td></tr>
+  <tr><td>배치를 얼마나 키우면 <b>충분한가</b>?</td><td>LLN · CLT · 집중부등식</td><td><b>Topic 10</b></td></tr>
+  <tr><td>85점에 <b>신뢰구간</b>을 붙이려면?</td><td>구간추정</td><td><b>Topic 14</b></td></tr>
+  <tr><td>모델 A 가 B 보다 <b>정말</b> 나은가?</td><td>가설검정, 순열검정</td><td><b>Topic 14</b></td></tr>
+</table>
+
+<p>
+  다섯 줄 중 넷이 이 과목 안에 있다.
+  <b>지금 "그냥 그렇게 하는 것" 으로 외운 관행들이, 학기가 끝날 무렵에는 계산할 수 있는 대상이 된다.</b>
+</p>
+
+<div class="key">
+  Topic 1에서 가져갈 것은 딱 하나다 —
+  <b>train/test split 도, mini-batch 도, cross-validation 도
+  "전체 대신 일부를 본다" 는 하나의 행위이고,
+  그 일부가 전체를 얼마나 대표하는지를 묻는 학문이 확률통계다.</b>
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 · 2026학년도 2학기<br>
+  Topic 1 보충자료 — 시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ══════════ 시연 ① — train/test split ══════════ */
+(() => {
+  const N = 20, CUT = 14;                       // 20개를 14 : 6 으로
+  const base = Array.from({length:N}, (_,i) => i < 10 ? 'A' : 'B');   // A 먼저, B 나중
+  const poolEl = document.getElementById('poolA');
+  const trEl = document.getElementById('trA'), teEl = document.getElementById('teA');
+  const trMix = document.getElementById('trMix'), teMix = document.getElementById('teMix');
+  let order = base.slice(), busy = false;
+
+  const dot = c => '<div class="dot ' + c + '">' + c + '</div>';
+
+  function paintPool(){ poolEl.innerHTML = order.map(dot).join(''); }
+
+  function clearBins(){
+    trEl.innerHTML = teEl.innerHTML = '';
+    trMix.innerHTML = teMix.innerHTML = '';
+  }
+
+  function mixText(list, isTest){
+    const a = list.filter(x => x === 'A').length, b = list.length - a;
+    const bad = (a === 0 || b === 0);
+    const cls = bad ? 'warnx' : 'okx';
+    let msg;
+    if (isTest && a === 0)      msg = '← A 가 하나도 없다. A 를 맞히는 능력은 측정 불가';
+    else if (isTest && b === 0) msg = '← B 가 하나도 없다. B 를 맞히는 능력은 측정 불가';
+    else if (bad)               msg = '← 한 종류만 들어 있다';
+    else                        msg = '← 두 종류가 섞였다';
+    return 'A ' + a + '개 · B ' + b + '개 &nbsp; <span class="' + cls + '">' + msg + '</span>';
+  }
+
+  async function split(shuffle){
+    if (busy) return;
+    busy = true;
+    clearBins();
+    order = base.slice();
+    if (shuffle){
+      // Fisher-Yates — 모든 배열이 나올 확률이 같다
+      for (let i = N - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+      paintPool();
+      await sleep(420);
+    } else {
+      paintPool();
+      await sleep(200);
+    }
+    for (let i = 0; i < N; i++){
+      (i < CUT ? trEl : teEl).innerHTML += dot(order[i]);
+      poolEl.children[i].style.opacity = .2;
+      await sleep(55);
+    }
+    trMix.innerHTML = mixText(order.slice(0, CUT), false);
+    teMix.innerHTML = mixText(order.slice(CUT), true);
+    busy = false;
+  }
+
+  document.getElementById('cutRaw').onclick  = () => split(false);
+  document.getElementById('cutShuf').onclick = () => split(true);
+  document.getElementById('resetA').onclick  = () => {
+    if (busy) return;
+    order = base.slice(); paintPool(); clearBins();
+  };
+  paintPool();
+})();
+
+/* ══════════ 시연 ② — mini-batch ══════════ */
+(() => {
+  const N = 24;
+  const chipsEl = document.getElementById('chipsB');
+  const chartEl = document.getElementById('chartB');
+  const axisEl  = document.getElementById('axisB');
+  const statEl  = document.getElementById('statB');
+  const truthEl = document.getElementById('truthB');
+  const bsEl = document.getElementById('bs');
+  const runBtn = document.getElementById('runB'), newBtn = document.getElementById('newB');
+  const H = 132;                                  // .chart 높이와 맞출 것
+  let data = [], busy = false;
+
+  function makeData(){
+    // 정확히 절반이 1 이 되게 만든다 — 참 평균이 항상 0.5
+    data = Array(N/2).fill(1).concat(Array(N/2).fill(0));
+    shuffle(data);
+    paintChips();
+    chartEl.innerHTML = ''; axisEl.innerHTML = '';
+    statEl.textContent = '';
+    truthEl.style.bottom = (0.5 * H) + 'px';
+    truthEl.querySelector('b').textContent = '참 평균 0.500';
+  }
+
+  function shuffle(a){
+    for (let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+  }
+
+  function paintChips(){
+    chipsEl.innerHTML = data.map((v,i) =>
+      '<div class="chip' + (v ? ' one' : '') + '" id="cb' + i + '">' + v + '</div>').join('');
+  }
+
+  // 이 데모의 이론적 흔들림.
+  // 데이터가 24개뿐이고 되돌려 넣지 않고 뽑으므로 0.5/√n 보다 조금 작다
+  // (배치가 커질수록 "남은 것"이 줄어 배치 24 에서는 정확히 0 이 된다).
+  const theo = n => (0.5 / Math.sqrt(n)) * Math.sqrt((N - n) / (N - 1));
+
+  async function runEpoch(){
+    if (busy) return;
+    busy = true; runBtn.disabled = newBtn.disabled = true;
+
+    shuffle(data);                                // ⭐ 에폭마다 다시 섞는다
+    paintChips();
+    chartEl.innerHTML = ''; axisEl.innerHTML = '';
+    await sleep(300);
+
+    const bs = +bsEl.value, nb = N / bs;
+    const means = [];
+
+    for (let b = 0; b < nb; b++){
+      const slice = data.slice(b*bs, (b+1)*bs);
+      for (let i = b*bs; i < (b+1)*bs; i++) document.getElementById('cb'+i).classList.add('now');
+      await sleep(300);
+
+      const m = slice.reduce((s,v) => s+v, 0) / bs;
+      means.push(m);
+
+      const bar = document.createElement('div');
+      bar.className = 'bar' + (Math.abs(m - 0.5) > 0.2 ? ' far' : '');
+      bar.style.height = '2px';
+      bar.innerHTML = '<span>' + m.toFixed(2) + '</span>';
+      chartEl.appendChild(bar);
+      const lab = document.createElement('div');
+      lab.textContent = '배치 ' + (b+1);
+      axisEl.appendChild(lab);
+      await sleep(30);
+      bar.style.height = Math.max(2, m * H) + 'px';
+
+      for (let i = b*bs; i < (b+1)*bs; i++){
+        const c = document.getElementById('cb'+i);
+        c.classList.remove('now'); c.classList.add('done');
+      }
+      await sleep(210);
+    }
+
+    const worst = means.reduce((w,m) => Math.max(w, Math.abs(m - 0.5)), 0);
+    const sd = Math.sqrt(means.reduce((s,m) => s + (m-0.5)**2, 0) / means.length);
+    statEl.innerHTML =
+      '배치 ' + nb + '개 &nbsp;·&nbsp; 참 평균에서 가장 멀리 벗어난 값 <b>' + worst.toFixed(3) + '</b>' +
+      ' &nbsp;·&nbsp; 이번 에폭의 흔들림 <b>' + sd.toFixed(3) + '</b>' +
+      '<br><span style="color:var(--muted);font-size:13px">' +
+      '이 데모의 이론값 <b style="font-size:13px">' + theo(bs).toFixed(3) + '</b>' +
+      ' &nbsp;— 한 에폭의 배치가 몇 개뿐이라 딱 맞지는 않는다. 여러 번 돌려 볼 것' +
+      (bs === N ? ' · 배치가 곧 전체이므로 흔들림이 정확히 0 이다' : '') + '</span>';
+
+    busy = false; runBtn.disabled = newBtn.disabled = false;
+  }
+
+  runBtn.onclick = runEpoch;
+  newBtn.onclick = () => { if (!busy) makeData(); };
+  bsEl.onchange  = () => { if (!busy){ chartEl.innerHTML=''; axisEl.innerHTML=''; statEl.textContent=''; paintChips(); } };
+  makeData();
+})();
+
+/* ══════════ 시연 ③ — k-fold cross-validation ══════════ */
+(() => {
+  const N = 15, NMISS = 3;                       // 15개 중 3개를 틀린다 → 참 정확도 12/15 = 0.800
+  const dataEl = document.getElementById('dataC');
+  const foldsEl = document.getElementById('foldsC');
+  const avgEl = document.getElementById('avgC');
+  const kEl = document.getElementById('kk'), runBtn = document.getElementById('runC');
+  let hit = [], busy = false;
+
+  function makeData(){
+    hit = Array(N - NMISS).fill(1).concat(Array(NMISS).fill(0));
+    for (let i = N - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [hit[i], hit[j]] = [hit[j], hit[i]];
+    }
+    dataEl.innerHTML = hit.map(v =>
+      '<div class="d15' + (v ? '' : ' miss') + '">' + (v ? '●' : '✕') + '</div>').join('');
+  }
+
+  function layout(){
+    const k = +kEl.value, sz = N / k;
+    foldsEl.innerHTML = '';
+    for (let r = 0; r < k; r++){
+      const row = document.createElement('div');
+      row.className = 'frow'; row.id = 'fr' + r;
+      let s = '<div class="rl">' + (r+1) + '회차</div>';
+      for (let b = 0; b < k; b++) s += '<div class="blk" id="bk'+r+'_'+b+'">' +
+        (b === r ? 'TEST' : 'train') + '</div>';
+      s += '<div class="sc" id="sc'+r+'">—</div>';
+      row.innerHTML = s;
+      foldsEl.appendChild(row);
+    }
+    avgEl.innerHTML = '<span style="color:var(--muted)">각 회차마다 한 덩이(' + sz +
+      '개)씩 돌아가며 TEST 를 맡는다</span>';
+  }
+
+  async function run(){
+    if (busy) return;
+    busy = true; runBtn.disabled = kEl.disabled = true;
+    makeData(); layout();
+    await sleep(340);
+
+    const k = +kEl.value, sz = N / k, scores = [];
+    for (let r = 0; r < k; r++){
+      document.getElementById('fr'+r).classList.add('on');
+      document.getElementById('bk'+r+'_'+r).classList.add('va');
+      await sleep(430);
+      const fold = hit.slice(r*sz, (r+1)*sz);
+      const s = fold.reduce((a,v)=>a+v, 0) / sz;
+      scores.push(s);
+      document.getElementById('sc'+r).textContent = s.toFixed(3);
+      await sleep(220);
+      document.getElementById('fr'+r).classList.remove('on');
+    }
+
+    const avg = scores.reduce((a,s)=>a+s, 0) / k;
+    const lo = Math.min(...scores), hi = Math.max(...scores);
+    avgEl.innerHTML =
+      '개별 회차 <b style="color:var(--orange)">' + lo.toFixed(3) + ' ~ ' + hi.toFixed(3) + '</b>' +
+      ' 사이에서 출렁인다 &nbsp;→&nbsp; 평균 <b>' + avg.toFixed(3) + '</b>' +
+      '<br><span style="color:var(--muted);font-size:13px">' +
+      'k 를 바꿔도, 데이터를 다시 섞어도 평균은 언제나 0.800 이다 — ' +
+      '15개를 정확히 한 번씩 채점했으므로 12/15 와 같다</span>';
+
+    busy = false; runBtn.disabled = kEl.disabled = false;
+  }
+
+  runBtn.onclick = run;
+  kEl.onchange = () => { if (!busy) layout(); };
+  makeData(); layout();
+})();
+</script>
+</body>
+</html>
