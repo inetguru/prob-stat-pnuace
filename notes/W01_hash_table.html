@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>해시와 해시 테이블 — 어떻게 한 번에 찾는가</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  ul{padding-left:22px} li{margin:6px 0}
+
+  /* ── 공통 시연 틀 ── */
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .ctl{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:16px}
+  input[type=text]{font-family:inherit; font-size:14.5px; padding:8px 12px;
+    border:1px solid var(--line); border-radius:7px; width:170px; color:var(--ink)}
+  input[type=text]:focus{outline:none; border-color:var(--accent)}
+  button{font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--body);
+    border-radius:7px; padding:8px 13px; transition:all .12s}
+  button:hover:not(:disabled){border-color:var(--accent); color:var(--accent)}
+  button:disabled{opacity:.45; cursor:default}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  button.primary:hover:not(:disabled){filter:brightness(1.08); color:#fff}
+  .hint{font-size:13px; color:var(--muted); margin-left:auto}
+
+  /* ── 해시 계산 표시 ── */
+  .calc{background:var(--soft); border:1px solid var(--line); border-radius:9px;
+        padding:16px; min-height:104px; margin-bottom:18px}
+  .chars{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:10px; min-height:46px}
+  .ch{border:1px solid var(--line); background:#fff; border-radius:6px; padding:3px 9px;
+      text-align:center; opacity:0; transform:translateY(-7px); transition:all .22s}
+  .ch.on{opacity:1; transform:none}
+  .ch b{display:block; font-size:16px; color:var(--ink)}
+  .ch span{display:block; font-size:11.5px; color:var(--muted); font-family:Consolas,monospace}
+  .steps2{font-family:Consolas,monospace; font-size:14.5px; color:var(--muted); min-height:24px}
+  .steps2 .hl{color:var(--accent); font-weight:700}
+  .steps2 .res{color:#fff; background:var(--accent); border-radius:5px; padding:2px 9px; font-weight:700}
+
+  /* ── 버킷 ── */
+  .buckets{display:grid; grid-template-columns:repeat(8,1fr); gap:8px}
+  .bk{border:1.5px solid var(--line); border-radius:8px; background:#fff;
+      min-height:112px; padding:6px 5px; transition:all .25s}
+  .bk .idx{font-size:11.5px; font-weight:800; color:var(--muted);
+           text-align:center; font-family:Consolas,monospace; margin-bottom:5px}
+  .bk.hot{border-color:var(--accent); background:#eef1fe; transform:translateY(-4px);
+          box-shadow:0 6px 16px rgba(59,79,216,.16)}
+  .bk.clash{border-color:var(--orange); background:var(--warn)}
+  .item{background:var(--accent); color:#fff; font-size:12px; font-weight:700;
+        border-radius:5px; padding:3px 5px; margin-bottom:4px; text-align:center;
+        animation:drop .3s ease-out; overflow:hidden; text-overflow:ellipsis}
+  .item.dup{background:var(--orange)}
+  @keyframes drop{from{opacity:0; transform:translateY(-16px) scale(.85)} to{opacity:1; transform:none}}
+
+  /* ── 속도 비교 ── */
+  .race{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:6px}
+  .lane h4{margin:0 0 8px; font-size:14.5px; color:var(--ink)}
+  .cells{display:flex; flex-wrap:wrap; gap:4px}
+  .cell{width:52px; font-size:11px; text-align:center; padding:5px 2px; border-radius:5px;
+        border:1px solid var(--line); background:#fff; transition:all .12s;
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .cell.scan{background:var(--warn); border-color:var(--orange)}
+  .cell.hit{background:var(--teal); border-color:var(--teal); color:#fff; font-weight:700}
+  .cell.skip{opacity:.32}
+  .count{margin-top:10px; font-size:14px; color:var(--ink)}
+  .count b{font-size:19px; color:var(--accent)}
+  .count.slow b{color:var(--orange)}
+
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .buckets{grid-template-columns:repeat(4,1fr)}
+    .race{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>해시와 해시 테이블</h1>
+<p class="sub">
+  확률통계 · Topic 1 보충자료 — 슬라이드 32번 <b>"오늘 배운 게 어디에 쓰이나"</b> 의 Hashing
+</p>
+
+<p>
+  슬라이드에서 <b>"서로 다른 키가 같은 버킷에 떨어질 확률은 생일 문제와 같은 구조"</b> 라고만 하고 지나갔다.
+  그 말을 이해하려면 먼저 <b>해시 테이블이 무엇인지</b> 알아야 한다.
+  자료구조 과목에서 배우겠지만, 여기서는 <b>확률 이야기에 필요한 만큼만</b> 짚는다.
+</p>
+
+<h2>1. 문제 — 100만 개에서 하나 찾기</h2>
+
+<p>
+  학번으로 학생을 찾는 프로그램을 만든다고 하자. 데이터가 100만 개 있다.
+  가장 단순한 방법은 <b>처음부터 하나씩 비교</b>하는 것이다.
+</p>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">순차 탐색</span>
+    <b>운이 나쁘면 100만 번</b><br>
+    찾는 값이 맨 뒤에 있으면 전부 확인해야 한다.
+    평균 50만 번. 데이터가 늘면 그만큼 느려진다.
+  </div>
+  <div class="card">
+    <span class="lbl">해시 테이블</span>
+    <b>대개 한 번</b><br>
+    <b>값을 보고 위치를 계산</b>한다. 데이터가 100만 개든 1억 개든
+    계산 한 번이면 자리를 안다.
+  </div>
+</div>
+
+<p>
+  발상이 이렇다. 물건을 아무 데나 넣고 나중에 뒤지는 대신,
+  <b>"이 물건은 몇 번 칸"이라는 규칙을 미리 정해두는 것</b>이다.
+  넣을 때도 찾을 때도 같은 규칙을 쓰면, 뒤질 필요가 없다.
+</p>
+
+<h2>2. 해시 함수 — 무엇이든 숫자로</h2>
+
+<p>
+  그 규칙을 만드는 것이 <b>해시 함수(hash function)</b> 다.
+  글자든 그림이든 파일이든 넣으면 <b>정해진 범위의 숫자 하나</b>를 뱉는다.
+</p>
+
+<div class="eq">
+  해시 함수 &nbsp;<code>h</code>&nbsp; : &nbsp; 아무 데이터 &nbsp;⟶&nbsp; <code>0 … m−1</code> 중 하나의 숫자
+</div>
+
+<p>아래에서 쓸 해시 함수는 교육용으로 아주 단순하게 잡았다.</p>
+
+<div class="eq">
+  <b>h(단어)</b> = (글자 코드를 전부 더한 값) <b>%</b> 8 &nbsp;&nbsp;
+  <span style="color:var(--muted);font-size:14px">← <code>%</code> 는 나머지 연산</span>
+</div>
+
+<p>해시 함수가 갖춰야 할 성질은 셋이다.</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">① 같은 입력 → 같은 출력</span>
+    <b>언제 계산해도 같아야</b><br>
+    그래야 넣을 때와 찾을 때 같은 칸으로 간다.
+  </div>
+  <div class="card">
+    <span class="lbl">② 빠를 것</span>
+    <b>계산이 탐색보다 느리면 의미가 없다</b><br>
+    보통 덧셈·곱셈·비트연산 몇 번으로 끝난다.
+  </div>
+  <div class="card">
+    <span class="lbl">③ 고르게 흩어질 것</span>
+    <b>한쪽에 몰리면 안 된다</b><br>
+    ⭐ <b>여기서 확률이 등장한다.</b> 뒤에서 다시 본다.
+  </div>
+</div>
+
+<h2>3. 직접 넣어 보기</h2>
+
+<p>
+  단어를 넣으면 <b>해시 계산 과정</b>이 단계별로 보이고, 공이 해당 칸으로 들어간다.
+  같은 칸에 둘 이상 들어가면 <b>주황색</b>으로 표시된다.
+</p>
+
+<div class="viz">
+  <div class="ctl">
+    <input type="text" id="key" placeholder="영어 단어나 한글" maxlength="12" value="apple">
+    <button class="primary" id="add">넣기</button>
+    <button id="demo">예시 8개 자동</button>
+    <button id="clear">비우기</button>
+    <span class="hint">h(단어) = 글자 코드 합 % 8</span>
+  </div>
+
+  <div class="calc">
+    <div class="chars" id="chars"></div>
+    <div class="steps2" id="steps2">단어를 넣어 볼 것.</div>
+  </div>
+
+  <div class="buckets" id="buckets"></div>
+</div>
+
+<div class="note">
+  <b>⚠️ 실제 해시 함수는 이것보다 훨씬 복잡하다.</b>
+  위 함수는 <b>글자 순서를 무시</b>한다. 그래서 <code>lemon</code> 과 <code>melon</code> 은
+  더한 값이 <b>똑같이 539</b> 라 반드시 같은 칸에 떨어진다.
+  실무에서 쓰는 해시(SHA-256, MurmurHash 등)는 순서까지 반영하고, 입력이 한 글자만 달라도
+  결과가 완전히 달라지도록 설계돼 있다.
+</div>
+
+<h2>4. 찾을 때 무슨 일이 벌어지나</h2>
+
+<p>
+  왼쪽은 <b>처음부터 하나씩 비교</b>하고, 오른쪽은 <b>해시로 자리를 계산해 바로 간다.</b>
+  같은 값을 찾게 시켜 보고 <b>비교 횟수</b>를 견주어 볼 것.
+</p>
+
+<div class="viz">
+  <div class="ctl">
+    <button class="primary" id="race">찾기 시작</button>
+    <button id="reshuffle">다른 값 찾기</button>
+    <span class="hint" id="target">찾을 값: —</span>
+  </div>
+
+  <div class="race">
+    <div class="lane">
+      <h4>순차 탐색 — 배열</h4>
+      <div class="cells" id="arr"></div>
+      <div class="count slow">비교 <b id="c1">0</b> 번</div>
+    </div>
+    <div class="lane">
+      <h4>해시 테이블</h4>
+      <div class="cells" id="hsh"></div>
+      <div class="count">비교 <b id="c2">0</b> 번</div>
+    </div>
+  </div>
+</div>
+
+<p>
+  해시 쪽은 <b>계산 한 번으로 칸을 찾고, 그 칸 안에서만 비교</b>한다.
+  칸에 하나만 들어 있으면 비교도 한 번이다. 데이터가 몇 개든 상관없다 —
+  이것이 <b>평균 O(1)</b> 이라고 부르는 성질이다.
+</p>
+
+<h2>5. 충돌 — 피할 수 없다</h2>
+
+<p>
+  서로 다른 키가 <b>같은 칸</b>으로 가는 일을 <b>충돌(collision)</b> 이라 한다.
+  위에서 이미 보셨을 것이다. 충돌에는 원인이 두 가지 있다.
+</p>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">원인 1 — 칸이 모자라서</span>
+    <b>비둘기집 원리</b><br>
+    가능한 키는 무한한데 칸은 <code>m</code> 개다.
+    <b>키가 <code>m</code> 개를 넘으면 충돌은 반드시 일어난다.</b>
+    <code>date</code>(414) 와 <code>fig</code>(310) 는 합이 다른데도
+    8로 나눈 나머지가 둘 다 6이다.
+  </div>
+  <div class="card">
+    <span class="lbl">원인 2 — 함수가 나빠서</span>
+    <b>설계 결함</b><br>
+    <code>lemon</code> 과 <code>melon</code> 은 합 자체가 같다.
+    좋은 해시 함수라면 이런 일이 없어야 한다.
+    ⭐ 원인 1은 <b>어쩔 수 없고</b>, 원인 2는 <b>고칠 수 있다.</b>
+  </div>
+</div>
+
+<h3>그래서 충돌을 "막지" 않고 "처리"한다</h3>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">체이닝</span>
+    <b>한 칸에 여러 개를 매단다</b><br>
+    위 시연이 이 방식이다. 칸마다 목록을 두고 쌓는다.
+    찾을 때는 그 목록만 훑으면 된다.
+  </div>
+  <div class="card">
+    <span class="lbl">개방 주소법</span>
+    <b>옆 칸으로 밀어 넣는다</b><br>
+    자리가 찼으면 다음 빈칸을 찾아간다.
+    메모리를 아끼지만 지우기가 까다롭다.
+  </div>
+</div>
+
+<h2>6. ⭐ 여기서 확률이 필요해진다</h2>
+
+<p>
+  "충돌이 <b>가끔</b> 일어난다"와 "충돌이 <b>자주</b> 일어난다"는 전혀 다른 이야기다.
+  전자면 해시 테이블은 빠르고, 후자면 결국 순차 탐색과 다를 바 없어진다.
+  그러니 물어야 한다 — <b>충돌은 얼마나 자주 일어나는가?</b>
+</p>
+
+<p>
+  키가 칸에 <b>고르게, 서로 독립적으로</b> 떨어진다고 <b>가정</b>하면
+  (Topic 1 의 <b>등확률 가정</b>이다) 계산할 수 있다.
+  칸이 <code>m</code> 개, 키가 <code>n</code> 개일 때
+  <b>충돌이 하나도 없을 확률</b>은 이렇다.
+</p>
+
+<div class="eq">
+  ℙ[충돌 없음] = <b>m/m</b> × <b>(m−1)/m</b> × <b>(m−2)/m</b> × ⋯ × <b>(m−n+1)/m</b>
+  <br><br>
+  ℙ[충돌 있음] = 1 − ℙ[충돌 없음] &nbsp;&nbsp;
+  <span style="color:var(--muted);font-size:14px">← <b>여사건</b>이다</span>
+</div>
+
+<p>
+  <b>이 식이 낯익다면 맞다.</b> <code>m = 365</code>, <code>n = 23</code> 을 넣으면
+  <b>0.5073</b> 이 나온다. 생일 문제 그 값이다.
+  <b>해시 충돌과 생일 문제는 완전히 같은 문제</b>다 — 칸이 날짜냐 버킷이냐만 다르다.
+</p>
+
+<table>
+  <tr><th>칸의 개수 m</th><th>충돌 확률이 50%를 넘는 키 개수</th><th>대략</th></tr>
+  <tr><td>16</td><td>5</td><td rowspan="5" style="vertical-align:middle">
+      약 <b>1.18 × √m</b><br>
+      <span style="color:var(--muted);font-size:13.5px">칸 수의 제곱근 언저리</span></td></tr>
+  <tr><td>100</td><td>13</td></tr>
+  <tr><td>365</td><td><b>23</b> ← 생일 문제</td></tr>
+  <tr><td>1,000</td><td>38</td></tr>
+  <tr><td>1,000,000</td><td>1,178</td></tr>
+</table>
+
+<div class="note">
+  <b>충돌은 생각보다 훨씬 빨리 온다.</b>
+  칸이 100만 개나 되는데 키가 <b>1,178개</b>만 들어와도 충돌 확률이 절반을 넘는다.
+  전체의 0.1% 밖에 안 찼는데 말이다.
+  그래서 해시 테이블 설계는 <b>"충돌을 없애기"가 아니라 "충돌을 싸게 처리하기"</b> 가 목표다.
+  <br><br>
+  ⭐ 이 계산을 직접 해 보는 것이 <b>과제 1(생일 문제)</b> 이다.
+  거기서 만든 코드의 <code>365</code> 를 버킷 수로 바꾸면 그대로 해시 충돌 계산기가 된다.
+</div>
+
+<h2>7. 어디에 쓰이나</h2>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">언어 기본 자료형</span>
+    <b>Python <code>dict</code> · <code>set</code></b><br>
+    <code>d["key"]</code> 가 빠른 이유가 해시다.
+    Java <code>HashMap</code>, C++ <code>unordered_map</code> 도 같다.
+  </div>
+  <div class="card">
+    <span class="lbl">데이터베이스</span>
+    <b>해시 인덱스 · 조인</b><br>
+    수억 행에서 조건에 맞는 행을 찾을 때,
+    또 두 표를 이어 붙일 때 쓴다.
+  </div>
+  <div class="card">
+    <span class="lbl">캐시</span>
+    <b>중복 계산 피하기</b><br>
+    입력을 해시로 만들어 "전에 계산한 적 있나"를 즉시 확인한다.
+    웹 캐시, 메모이제이션.
+  </div>
+  <div class="card">
+    <span class="lbl">무결성 검사</span>
+    <b>파일이 바뀌었나</b><br>
+    내려받은 파일의 해시를 원본과 비교한다.
+    한 비트만 달라도 값이 완전히 달라진다.
+  </div>
+  <div class="card">
+    <span class="lbl">비밀번호 저장</span>
+    <b>원문을 저장하지 않는다</b><br>
+    해시만 저장해 두고 로그인할 때 비교한다.
+    ⚠️ 이때는 <b>일부러 느린</b> 해시를 쓴다.
+  </div>
+  <div class="card">
+    <span class="lbl">Git · 블록체인</span>
+    <b>내용으로 이름 짓기</b><br>
+    Git 의 커밋 ID 가 내용의 해시다.
+    블록체인도 같은 원리로 위변조를 막는다.
+  </div>
+</div>
+
+<div class="note">
+  <b>같은 "해시"인데 목적이 정반대인 경우가 있다.</b>
+  해시 테이블용 해시는 <b>빠를수록</b> 좋지만, 비밀번호용 해시는 <b>느릴수록</b> 좋다.
+  공격자가 무작위로 대입할 때 한 번 시도에 오래 걸리게 만들어야 하기 때문이다.
+  이름은 같아도 설계 목표가 다르다.
+</div>
+
+<h2>8. 여기서 멈추는 자리</h2>
+
+<p>
+  이 문서는 <b>"충돌이 일어날 확률"</b> 까지만 다뤘다. Topic 1 의 도구
+  (여사건 · 곱의 법칙 · 등확률 가정)로 답할 수 있는 데까지다.
+</p>
+
+<table>
+  <tr><th>물어볼 만한 것</th><th>필요한 도구</th><th>언제</th></tr>
+  <tr><td>충돌이 <b>일어날 확률</b>은?</td><td>여사건 · 곱의 법칙</td><td><b>Topic 1 — 이 문서</b></td></tr>
+  <tr><td>한 칸에 <b>평균 몇 개</b>가 쌓이나?</td><td>기댓값</td><td>Topic 3</td></tr>
+  <tr><td><b>평균 탐색 시간</b>은?</td><td>기댓값의 선형성</td><td>Topic 3</td></tr>
+  <tr><td>가장 붐비는 칸은 얼마나 붐비나?</td><td>집중부등식</td><td>Topic 10</td></tr>
+</table>
+
+<p>
+  슬라이드 32번의 다른 항목인 <b>Quicksort</b> 도 같은 이유로 Topic 3 에서 다룬다.
+  "무작위로 pivot 을 고른다"까지는 오늘 말할 수 있지만,
+  <b>"그래서 평균적으로 왜 빠른가"</b> 는 기댓값 없이는 설명할 수 없다.
+</p>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 1 슬라이드 32번 보충 &nbsp;·&nbsp; 충돌 확률의 계산은 과제 1(생일 문제)과 같은 구조
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const M = 8;                                   // 버킷 개수
+  const hash = s => [...s].reduce((a,c)=>a+c.charCodeAt(0),0);
+  const idxOf = s => hash(s) % M;
+  const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+  /* ─────────── 시연 1 : 넣기 ─────────── */
+  const bucketsEl = document.getElementById('buckets');
+  const charsEl   = document.getElementById('chars');
+  const stepsEl   = document.getElementById('steps2');
+  const keyEl     = document.getElementById('key');
+  const addBtn    = document.getElementById('add');
+  const demoBtn   = document.getElementById('demo');
+  const clearBtn  = document.getElementById('clear');
+  let table = Array.from({length:M}, () => []);
+  let busy = false;
+
+  function paint(){
+    bucketsEl.innerHTML = '';
+    for (let i = 0; i < M; i++){
+      const d = document.createElement('div');
+      d.className = 'bk' + (table[i].length > 1 ? ' clash' : '');
+      d.id = 'bk' + i;
+      d.innerHTML = '<div class="idx">' + i + '</div>' +
+        table[i].map((w,j) => '<div class="item' +
+          (j > 0 ? ' dup' : '') + '">' + w + '</div>').join('');
+      bucketsEl.appendChild(d);
+    }
+  }
+
+  async function insert(word){
+    if (busy || !word) return;
+    busy = true; addBtn.disabled = demoBtn.disabled = true;
+
+    // ① 글자를 하나씩 펼치며 코드 보이기
+    charsEl.innerHTML = '';
+    stepsEl.innerHTML = '';
+    const cells = [...word].map(c => {
+      const e = document.createElement('div');
+      e.className = 'ch';
+      e.innerHTML = '<b>' + c + '</b><span>' + c.charCodeAt(0) + '</span>';
+      charsEl.appendChild(e);
+      return e;
+    });
+    for (const e of cells){ e.classList.add('on'); await sleep(110); }
+
+    // ② 합 → 나머지
+    const tot = hash(word), i = tot % M;
+    stepsEl.innerHTML = [...word].map(c=>c.charCodeAt(0)).join(' + ') +
+                        ' = <span class="hl">' + tot + '</span>';
+    await sleep(420);
+    stepsEl.innerHTML += ' &nbsp;→&nbsp; ' + tot + ' % ' + M +
+                         ' = <span class="res">' + i + '</span>';
+    await sleep(330);
+
+    // ③ 해당 칸을 띄우고 넣기
+    const bk = document.getElementById('bk' + i);
+    bk.classList.add('hot');
+    await sleep(260);
+    const already = table[i].length > 0;
+    table[i].push(word);
+    paint();
+    document.getElementById('bk' + i).classList.add('hot');
+    if (already){
+      stepsEl.innerHTML += ' &nbsp; <b style="color:var(--orange)">⚠ 충돌 — 이 칸은 이미 차 있다</b>';
+    }
+    await sleep(560);
+    document.getElementById('bk' + i).classList.remove('hot');
+
+    busy = false; addBtn.disabled = demoBtn.disabled = false;
+  }
+
+  addBtn.onclick = () => { insert(keyEl.value.trim()); keyEl.value = ''; keyEl.focus(); };
+  keyEl.onkeydown = e => { if (e.key === 'Enter') addBtn.click(); };
+  clearBtn.onclick = () => {
+    if (busy) return;
+    table = Array.from({length:M}, () => []);
+    charsEl.innerHTML = ''; stepsEl.textContent = '단어를 넣어 볼 것.';
+    paint();
+  };
+  demoBtn.onclick = async () => {
+    if (busy) return;
+    clearBtn.onclick();
+    // lemon/melon 은 합이 같아 반드시 충돌한다 — 설계 결함을 보이는 짝
+    for (const w of ['apple','banana','cherry','date','fig','lemon','melon','grape'])
+      await insert(w);
+  };
+  paint();
+
+  /* ─────────── 시연 2 : 찾기 경주 ─────────── */
+  const WORDS = ['apple','banana','cherry','date','fig','grape','kiwi','lemon',
+                 'melon','peach','plum','berry'];
+  const arrEl = document.getElementById('arr');
+  const hshEl = document.getElementById('hsh');
+  const c1 = document.getElementById('c1'), c2 = document.getElementById('c2');
+  const tgtEl = document.getElementById('target');
+  const raceBtn = document.getElementById('race');
+  const reBtn = document.getElementById('reshuffle');
+  let target = 'plum', racing = false;
+
+  // 해시 테이블 쪽 배치 — 칸 번호 순서로 늘어놓는다
+  const htable = Array.from({length:M}, () => []);
+  WORDS.forEach(w => htable[idxOf(w)].push(w));
+
+  function setupRace(){
+    arrEl.innerHTML = WORDS.map((w,i)=>'<div class="cell" id="a'+i+'">'+w+'</div>').join('');
+    hshEl.innerHTML = htable.map((list,i) =>
+      '<div class="cell" id="h'+i+'" style="width:60px">' +
+      '<span style="color:var(--muted);font-size:10px">'+i+'</span><br>' +
+      (list.join('<br>') || '·') + '</div>').join('');
+    c1.textContent = '0'; c2.textContent = '0';
+    tgtEl.textContent = '찾을 값: ' + target;
+  }
+
+  async function runRace(){
+    if (racing) return;
+    racing = true; raceBtn.disabled = reBtn.disabled = true;
+    setupRace();
+
+    // 왼쪽 — 하나씩 훑는다
+    let n1 = 0;
+    for (let i = 0; i < WORDS.length; i++){
+      const c = document.getElementById('a'+i);
+      c.classList.add('scan'); n1++; c1.textContent = n1;
+      await sleep(230);
+      if (WORDS[i] === target){ c.classList.remove('scan'); c.classList.add('hit'); break; }
+      c.classList.remove('scan');
+      c.classList.add('skip');
+    }
+
+    // 오른쪽 — 계산해서 바로 간다
+    const i = idxOf(target);
+    for (let k = 0; k < M; k++) if (k !== i) document.getElementById('h'+k).classList.add('skip');
+    const hc = document.getElementById('h'+i);
+    hc.classList.add('scan');
+    await sleep(420);
+    hc.classList.remove('scan'); hc.classList.add('hit');
+    c2.textContent = htable[i].indexOf(target) + 1;   // 그 칸 안에서의 비교 횟수
+
+    racing = false; raceBtn.disabled = reBtn.disabled = false;
+  }
+
+  raceBtn.onclick = runRace;
+  reBtn.onclick = () => {
+    if (racing) return;
+    let t; do { t = WORDS[Math.floor(Math.random()*WORDS.length)]; } while (t === target);
+    target = t; setupRace();
+  };
+  setupRace();
+})();
+</script>
+</body>
+</html>
