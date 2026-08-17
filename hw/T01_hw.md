@@ -1,4 +1,4 @@
-# HW 1 — 생일 문제 (Birthday Problem)
+# HW — 생일 문제 (Birthday Problem)
 
 **확률통계 · Topic 1** | 배점 25점 | 개인 과제
 
