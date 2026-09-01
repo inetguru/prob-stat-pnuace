@@ -96,6 +96,3 @@ $$
 - 랩 노트북 `T01_lab.ipynb` **부록 A** (순열·조합 코드)
 - 과제 템플릿 [`T01_hw_template.ipynb`](T01_hw_template.ipynb) — 이걸 받아서 채우면 된다
 - 강의 슬라이드 Topic 1 — 여사건 정리 슬라이드
-
-> 💬 막히면 PLATO 쪽지 또는 kimjd@pusan.ac.kr.
-> **답을 그대로 받는 것보다, 어디까지 해봤는지 적어서 묻는 편이 훨씬 빨리 해결된다.**
