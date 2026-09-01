@@ -1,0 +1,880 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>정렬 알고리즘과 평균 성능 — 애니메이션으로 보고 기댓값으로 센다</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cmt{color:var(--muted); font-size:14px}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  .card.ok .lbl{color:var(--teal); background:#e6f6f3}
+  .card.no .lbl{color:var(--orange); background:#fdf1e3}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .ctl{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+  button{font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--body);
+    border-radius:7px; padding:8px 13px; transition:all .12s}
+  button:hover:not(:disabled){border-color:var(--accent); color:var(--accent)}
+  button:disabled{opacity:.45; cursor:default}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  button.primary:hover:not(:disabled){filter:brightness(1.08); color:#fff}
+  .hint{font-size:13px; color:var(--muted); margin-left:auto}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft)}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:23px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile .f{font-size:11.5px; color:var(--muted); font-family:Consolas,monospace}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  canvas{max-width:100%; display:block}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(2,1fr)}
+  }
+  /* ── 막대 애니메이션 ── */
+  .stage{background:var(--soft); border:1px solid var(--line); border-radius:10px;
+         padding:14px; margin:14px 0}
+  .bars{display:flex; align-items:flex-end; gap:3px; height:190px}
+  .bar{flex:1; background:var(--accent); border-radius:3px 3px 0 0; position:relative;
+       transition:height .12s, background .12s}
+  .bar.cmp{background:var(--orange)}
+  .bar.swap{background:var(--pink)}
+  .bar.done{background:var(--teal)}
+  .bar.pivot{background:var(--purple)}
+  .bar.aux{background:var(--muted)}
+  .stat{display:flex; gap:22px; flex-wrap:wrap; font-size:14px; margin-top:12px;
+        font-family:Consolas,monospace; color:var(--ink)}
+  .stat b{color:var(--accent); font-size:17px}
+  .algo{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px}
+  .algo button.on{background:var(--accent); border-color:var(--accent); color:#fff}
+  .say{font-size:14.5px; min-height:44px; padding:10px 14px; border-radius:7px;
+       background:#eef1fe; color:var(--ink); margin-top:12px}
+  .say b{color:var(--accent)}
+  /* ── Big-O 그래프 ── */
+  .bigo{display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:center}
+  @media (max-width:760px){ .bigo{grid-template-columns:1fr} .bars{height:140px} }
+  .pill{display:inline-block; font-family:Consolas,monospace; font-size:12.5px;
+        font-weight:700; border-radius:12px; padding:2px 10px}
+  .pill.g{background:#e6f6f3; color:#0f766e}
+  .pill.y{background:#fdf1e3; color:#b45309}
+  .pill.r{background:#fdeaf1; color:#a5205a}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>정렬 알고리즘과 평균 성능</h1>
+<p class="sub">
+  확률통계 · Topic 3 보충자료 — 슬라이드 <b>26번 (→AI 연결점)</b> 의
+  <b>"Quicksort의 평균 O(n log n)"</b>
+</p>
+
+<p>
+  슬라이드는 <b>"Quicksort의 평균 O(n log n)"</b> 이라고만 적고 지나갔다.
+  그런데 이 한 줄에는 <b>Topic 3 의 도구 두 개가 그대로</b> 들어 있다 —
+  <b>기댓값의 선형성</b>(슬라이드 15)과 <b>indicator</b>(슬라이드 17).
+</p>
+
+<div class="note">
+  <b>이 문서가 답하는 것 세 가지</b><br>
+  ① 정렬 알고리즘 다섯 개는 <b>각각 어떻게 움직이는가</b> (애니메이션으로 본다)<br>
+  ② <b>Big-O 표기</b>가 정확히 무슨 뜻인가<br>
+  ③ ⭐ <b>"평균"</b> O(n log n) 의 그 평균은 <b>무엇의 평균이며 어떻게 유도되는가</b>
+</div>
+
+<h2>1. 왜 정렬을 확률통계 수업에서 보는가</h2>
+
+<p>
+  정렬 알고리즘의 성능은 <b>입력이 어떻게 생겼느냐에 따라 달라진다.</b>
+  그래서 성능을 말하려면 세 가지를 구분해야 한다.
+</p>
+
+<div class="cards">
+  <div class="card ok">
+    <span class="lbl">최선 (best case)</span>
+    <b>가장 운이 좋을 때</b><br>
+    이미 정렬된 배열이 들어오는 등. <b>거의 쓸모없는 정보</b>다.
+  </div>
+  <div class="card no">
+    <span class="lbl">최악 (worst case)</span>
+    <b>가장 운이 나쁠 때</b><br>
+    <b>보장</b>이 필요할 때 쓴다. 그런데 너무 비관적일 수 있다.
+  </div>
+  <div class="card">
+    <span class="lbl">평균 (average case)</span>
+    <b>⭐ 기댓값</b><br>
+    <b>입력을 확률변수로 보고</b> 비교 횟수의 <b>기댓값</b>을 구한다.
+    <b>이게 오늘 배운 것이다.</b>
+  </div>
+</div>
+
+<div class="eq" style="border-left-color:var(--pink)">
+  <b>평균 성능이란 정확히 이런 뜻이다</b><br><br>
+  입력 배열을 <b>무작위로 뽑는다</b>고 하자 (n! 가지 순열이 모두 같은 확률).<br>
+  <i>C</i> = 그때 알고리즘이 하는 <b>비교 횟수</b> &nbsp;→&nbsp; <b>확률변수</b>다 (슬라이드 10번).<br>
+  평균 성능 = <b>𝔼[<i>C</i>]</b><br>
+  <span class="cmt">
+    "결과에 숫자를 대응시킨다"의 완벽한 예다 —
+    <b>Ω = 모든 입력 순열</b>, <b>C(순열) = 그 입력에서의 비교 횟수</b>.
+  </span>
+</div>
+
+<h2>2. 다섯 알고리즘, 직접 돌려 본다</h2>
+
+<div class="viz">
+<div class="algo" id="s-algo"></div>
+<div class="ctl">
+  <button class="primary" id="s-run">▶ 실행</button>
+  <button id="s-step">한 걸음</button>
+  <button id="s-shuffle">새 배열</button>
+  <button id="s-sorted">정렬된 배열로</button>
+  <button id="s-rev">역순 배열로</button>
+  <span class="hint">
+    <label>크기 <input type="range" id="s-n" min="8" max="40" value="20" style="width:90px; vertical-align:middle"></label>
+    <label>속도 <input type="range" id="s-sp" min="1" max="60" value="30" style="width:90px; vertical-align:middle"></label>
+  </span>
+</div>
+
+<div class="stage"><div class="bars" id="s-bars"></div></div>
+
+<div class="stat">
+  <span>비교 <b id="s-c">0</b></span>
+  <span>교환·이동 <b id="s-w">0</b></span>
+  <span>n = <b id="s-nn">20</b></span>
+  <span>n² / 2 = <b id="s-n2">200</b></span>
+  <span>n log₂n = <b id="s-nlg">86</b></span>
+</div>
+
+<div class="say" id="s-say">알고리즘을 고르고 ▶ 실행을 누르라.</div>
+</div>
+
+<p style="font-size:14px; color:var(--muted); margin-top:-4px">
+  <b>두 계수기의 뜻</b> — <b>비교</b>는 두 값의 크기를 물어본 횟수,
+  <b>이동</b>은 값을 옮겨 쓴 횟수다. 둘은 <b>같지 않다.</b>
+  삽입 정렬을 n = 20 무작위 배열로 돌리면 비교는 약 111번, 이동은 약 114번이 나온다
+  (이동 = 역전 수 95 + 마지막에 제자리에 놓는 19번).
+  <b>§4 에서 유도하는 n(n−1)/4 = 95 는 "역전의 수"</b> 다.
+</p>
+
+<div class="note">
+  <b>⚠️ 직접 해 볼 것 — "정렬된 배열로" 를 누르고 각각 돌려 보라.</b><br>
+  <b>삽입 정렬</b>은 비교 n−1 번에 끝난다 (선형!). <b>선택 정렬</b>은 그래도 n²/2 번을 다 센다.<br>
+  <b>퀵 정렬</b>은 오히려 <b>최악</b>이 된다 — 이 문서의 마지막 절에서 이유를 설명한다.
+</div>
+
+<h3>다섯 알고리즘을 한 문장씩</h3>
+
+<table>
+  <tr><th style="width:120px">이름</th><th style="width:270px">한 문장으로</th><th>연산 횟수 <span class="cmt">(무작위 입력 기준)</span></th></tr>
+  <tr>
+    <td><b>선택 정렬</b><br><span class="cmt" style="font-size:13px">selection</span></td>
+    <td>남은 것 중 <b>가장 작은 것을 찾아</b> 맨 앞으로 보낸다. 그걸 n번 반복.</td>
+    <td><b>입력과 무관하게 항상</b> n(n−1)/2 <span class="pill r">Θ(n²)</span></td>
+  </tr>
+  <tr>
+    <td><b>삽입 정렬</b><br><span class="cmt" style="font-size:13px">insertion</span></td>
+    <td>카드를 손에 쥐듯, 새 원소를 <b>이미 정렬된 앞부분의 제자리에 끼워</b> 넣는다.</td>
+    <td><b>이동 = 역전(inversion) 수</b> · 평균 <b>n(n−1)/4</b><br><span class="cmt">비교는 그보다 약 n 만큼 많다. 정렬된 입력이면 비교 n−1 로 끝난다</span> <span class="pill y">O(n²)</span></td>
+  </tr>
+  <tr>
+    <td><b>버블 정렬</b><br><span class="cmt" style="font-size:13px">bubble</span></td>
+    <td><b>이웃끼리 비교해</b> 순서가 틀렸으면 바꾼다. 큰 값이 거품처럼 뒤로 떠오른다.</td>
+    <td>최악 n(n−1)/2 · <span class="cmt">교환이 없으면 조기 종료 → 정렬된 입력은 n−1</span> <span class="pill r">O(n²)</span></td>
+  </tr>
+  <tr>
+    <td><b>병합 정렬</b><br><span class="cmt" style="font-size:13px">merge</span></td>
+    <td><b>반으로 쪼개</b> 각각 정렬한 뒤 <b>합친다</b>(merge). 재귀.</td>
+    <td><b>이동은 입력과 무관</b>(n=20 이면 늘 88회)<br><span class="cmt">비교는 입력에 따라 조금 변하지만(n=20 에서 53~69) 언제나</span> <span class="pill g">Θ(n log n)</span></td>
+  </tr>
+  <tr>
+    <td><b>퀵 정렬</b><br><span class="cmt" style="font-size:13px">quick</span></td>
+    <td><b>기준값(pivot)</b> 하나를 골라 <b>작은 것 / 큰 것</b>으로 가른 뒤 각각 재귀.</td>
+    <td><b>비교 평균 ≈ 1.39 n log₂n</b> · 최악 n(n−1)/2 <span class="pill g">평균 Θ(n log n)</span></td>
+  </tr>
+</table>
+
+<div class="link">
+  <b>왜 실무에서 퀵 정렬을 쓰나</b> — 병합 정렬은 최악에도 n log n 을 <b>보장</b>하는데도
+  퀵 정렬이 더 널리 쓰인다. <b>추가 메모리가 필요 없고</b>(제자리 정렬),
+  한 번의 비교에 드는 실제 비용이 작기 때문이다.
+  <b>"보장은 나쁘지만 평균이 좋고 상수가 작다"</b> — 평균을 믿고 가는 선택이다.
+  <b>Topic 3 이 내내 경고한 그 선택</b>이기도 하다.
+</div>
+
+<h2>3. Big-O 표기 — 무엇을 재고 무엇을 버리는가</h2>
+
+<p>
+  알고리즘의 속도를 <b>초 단위로</b> 말하면 컴퓨터가 바뀔 때마다 값이 달라진다.
+  그래서 <b>입력 크기 n 이 커질 때 연산 횟수가 어떤 <u>모양</u>으로 자라는지</b>만 본다.
+  그 모양을 적는 것이 <b>Big-O 표기</b>다.
+</p>
+
+<div class="eq">
+  <b><i>f</i>(n) = O(<i>g</i>(n))</b> 이란 —<br>
+  n 이 충분히 커지면 <i>f</i>(n) ≤ <i>c</i> · <i>g</i>(n) 이 되는 <b>상수 <i>c</i> 가 존재한다</b>는 뜻.<br>
+  <span class="cmt">쉽게 말해 <b>"아무리 커져도 g 보다 빨리 자라지는 않는다"</b> — <b>상한</b>이다.</span>
+</div>
+
+<h3>두 가지를 버린다</h3>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">① 상수배를 버린다</span>
+    <b>3n² 도 100n² 도 그냥 O(n²)</b><br>
+    컴퓨터가 100배 빨라지면 상수는 바뀐다. <b>모양은 안 바뀐다.</b>
+  </div>
+  <div class="card">
+    <span class="lbl">② 낮은 차수를 버린다</span>
+    <b>n² + 500n + 9999 도 O(n²)</b><br>
+    n = 10,000 이면 n² = 1억. 500n = 500만. <b>큰 쪽이 다 먹는다.</b>
+  </div>
+</div>
+
+<table>
+  <tr><th>n</th><th class="num">log₂ n</th><th class="num">n log₂ n</th><th class="num">n²</th><th>느낌</th></tr>
+  <tr><td>10</td><td class="num">3.3</td><td class="num">33</td><td class="num">100</td><td>차이가 안 보인다</td></tr>
+  <tr><td>1,000</td><td class="num">10</td><td class="num">9,966</td><td class="num">1,000,000</td><td>100배 차이</td></tr>
+  <tr><td>1,000,000</td><td class="num">20</td><td class="num">19,931,569</td><td class="num">1,000,000,000,000</td><td><b>5만 배 차이</b></td></tr>
+</table>
+
+<p>
+  마지막 줄을 보라. 100만 개를 정렬할 때
+  <b>n log n 알고리즘이 0.02초면 끝낼 일을 n² 알고리즘은 약 17분 붙잡고 있다</b>
+  (1초에 10억 번 비교한다고 치면).
+  <b>알고리즘의 "모양"이 하드웨어보다 중요한 이유</b>다.
+</p>
+
+<div class="viz bigo">
+  <div>
+    <canvas id="o-cv" width="560" height="300"></canvas>
+  </div>
+  <div>
+    <h3 style="margin-top:0">세 곡선</h3>
+    <p style="font-size:14px">
+      <span class="pill g">n log₂ n</span> 과 <span class="pill r">n² / 2</span> 는
+      <b>n 이 작을 때는 붙어 있다.</b> 그래서 작은 배열에서는 삽입 정렬이 오히려 빠르다
+      (실제 라이브러리도 조각이 작아지면 삽입 정렬로 갈아탄다).
+    </p>
+    <div class="sl">
+      <label>보는 범위 n ≤ <span class="val" id="o-vn">100</span></label>
+      <input type="range" id="o-n" min="10" max="2000" value="100">
+    </div>
+    <p style="font-size:13.5px; color:var(--muted)" id="o-msg"></p>
+  </div>
+</div>
+
+<div class="note">
+  <b>⚠️ Big-O 는 "얼마나 빠른가"가 아니라 "얼마나 잘 견디는가"다.</b>
+  O(n log n) 알고리즘이 n = 10 에서 O(n²) 보다 느릴 수 있다.
+  Big-O 가 말하는 것은 <b>n 이 커질 때 무슨 일이 벌어지는가</b> 뿐이다.
+</div>
+
+<h3>세 기호 — O · Ω · Θ</h3>
+
+<table>
+  <tr><th style="width:90px">기호</th><th style="width:130px">뜻</th><th>정렬에서의 예</th></tr>
+  <tr><td><b>O(g)</b></td><td><b>상한</b> — 이보다 나쁘진 않다</td>
+      <td>퀵 정렬은 O(n²) — <b>최악에는</b> n² 까지 간다</td></tr>
+  <tr><td><b>Ω(g)</b></td><td><b>하한</b> — 이보다 좋진 않다</td>
+      <td><b>비교 기반 정렬은 전부 Ω(n log n)</b> — 아무리 잘 만들어도 못 넘는 벽이 있다</td></tr>
+  <tr><td><b>Θ(g)</b></td><td><b>상·하한이 같다</b></td>
+      <td>병합 정렬은 Θ(n log n) — <b>입력이 무엇이든</b> 이 값이다</td></tr>
+</table>
+
+<div class="link">
+  <b>Ω(n log n) 이라는 벽은 왜 있나</b> — 비교만으로 정렬하면
+  n 개의 순서로 가능한 경우가 <b>n! 가지</b>다. 비교 한 번은 답을 <b>반으로</b> 줄이므로
+  최소 <b>log₂(n!) ≈ n log₂n − 1.44n</b> 번은 비교해야 한다.
+  <b>세는 문제로 바뀌었다</b> — Topic 1 의 셈하기가 여기서 쓰인다.
+</div>
+
+<h2>4. ⭐ 평균 성능을 기댓값으로 유도한다</h2>
+
+<p>
+  여기서부터가 이 문서의 핵심이고, <b>Topic 3 의 도구를 그대로 쓰는 곳</b>이다.
+  방법은 하나다 — <b>슬라이드 17번의 indicator</b>.
+</p>
+
+<div class="eq" style="border-left-color:var(--pink)">
+  <b>전략 — 세는 문제를 평균 문제로 바꾼다</b><br><br>
+  ① 비교 하나하나에 <b>indicator</b> 를 붙인다. <i>X<sub>ij</sub></i> = 이 둘을 비교하면 1, 아니면 0<br>
+  ② 전체 비교 횟수 <i>C</i> = Σ <i>X<sub>ij</sub></i> &nbsp;— 모두 더한 것<br>
+  ③ <b>선형성</b>으로 𝔼[<i>C</i>] = Σ 𝔼[<i>X<sub>ij</sub></i>] = Σ ℙ[둘을 비교한다]<br>
+  <span class="cmt">
+    ⭐ <b>indicator 의 기댓값은 그 사건의 확률이다</b> — 𝔼[<i>X</i>] = 1·<i>p</i> + 0·(1−<i>p</i>) = <i>p</i>.<br>
+    ⭐ <b>독립일 필요가 없다.</b> 비교들은 서로 심하게 얽혀 있는데도 그냥 더할 수 있다.
+    이게 선형성의 힘이다 (슬라이드 15번).
+  </span>
+</div>
+
+<h3>연습 ① 삽입 정렬 — 역전의 수가 평균 n(n−1)/4</h3>
+
+<p>
+  삽입 정렬이 하는 일은 사실 <b>"뒤집힌 쌍"을 하나씩 푸는 것</b>이다.
+  <i>i</i> &lt; <i>j</i> 인데 <i>a<sub>i</sub></i> &gt; <i>a<sub>j</sub></i> 이면
+  그 쌍을 <b>역전(inversion)</b> 이라 한다. 삽입 정렬이 <b>값을 옆으로 미는 횟수는 정확히 역전의 개수</b>다 — 한 번 밀 때마다 역전 하나가 풀린다.
+</p>
+
+<div class="eq">
+  <i>X<sub>ij</sub></i> = 자리 <i>i</i>, <i>j</i> 의 두 원소가 뒤집혀 있으면 1<br><br>
+  무작위 순열에서 두 원소 중 <b>어느 쪽이 앞에 올지는 반반</b>이므로 &nbsp;
+  ℙ[뒤집힘] = <b>1/2</b><br><br>
+  𝔼[역전 수] = Σ<sub><i>i</i>&lt;<i>j</i></sub> 1/2 = <b>C(n,2) × 1/2 = n(n−1)/4</b><br>
+  <span class="cmt">
+    최악(역순 배열)은 n(n−1)/2 이니 <b>평균은 정확히 그 절반</b>이다.
+    n = 20 이면 이론값 <b>95.0</b> — 20만 번 모의실험한 실측이 <b>94.95</b> 였다.<br>
+    ⚠️ <b>비교 횟수는 이보다 약 n 만큼 많다</b>(n = 20 에서 약 111). 밀지 않고 멈추는 마지막 비교가 원소마다 한 번씩 더 붙기 때문이다.
+  </span>
+</div>
+
+<div class="note">
+  <b>⚠️ 확률을 쓴 곳은 딱 한 줄이다 — ℙ[뒤집힘] = 1/2.</b>
+  나머지는 전부 <b>선형성으로 더한 것</b>뿐이다.
+  쌍들이 서로 독립인지는 <b>따지지 않았다</b>. 따질 필요가 없다.
+</div>
+
+<h3>연습 ② 퀵 정렬 — 평균 2n ln n ≈ 1.39 n log₂n</h3>
+
+<p>
+  퀵 정렬은 조금 더 재미있다. <b>"어떤 두 원소가 서로 비교될 확률"</b> 을 구하면 된다.
+  값을 크기 순으로 <i>z</i><sub>1</sub> &lt; <i>z</i><sub>2</sub> &lt; … &lt; <i>z<sub>n</sub></i> 라 하자.
+</p>
+
+<div class="eq">
+  <b>핵심 관찰</b> — <i>z<sub>i</sub></i> 와 <i>z<sub>j</sub></i> 가 비교되는 것은
+  <b>둘 사이의 값들 중 누가 먼저 pivot 이 되느냐</b>로 정해진다.<br><br>
+  <span class="cmt">
+    · 사이의 값 <i>z<sub>k</sub></i> (<i>i</i>&lt;<i>k</i>&lt;<i>j</i>) 가 <b>먼저</b> pivot 이 되면 →
+      둘은 <b>양쪽으로 갈라져 영영 만나지 않는다</b><br>
+    · <i>z<sub>i</sub></i> 나 <i>z<sub>j</sub></i> 가 <b>먼저</b> pivot 이 되면 →
+      그때 <b>반드시 비교된다</b>
+  </span>
+</div>
+
+<div class="eq">
+  구간 [<i>z<sub>i</sub></i> … <i>z<sub>j</sub></i>] 안에는 <b><i>j</i> − <i>i</i> + 1</b> 개의 값이 있고,
+  그중 <b>누가 먼저 pivot 이 되는지는 모두 같은 확률</b>이다.<br>
+  둘(<i>z<sub>i</sub></i>, <i>z<sub>j</sub></i>) 중 하나가 먼저일 확률은 —<br><br>
+  <b>ℙ[<i>z<sub>i</sub></i> 와 <i>z<sub>j</sub></i> 를 비교한다] = 2 / (<i>j</i> − <i>i</i> + 1)</b><br>
+  <span class="cmt">
+    ⭐ 여기가 유일하게 확률을 쓴 곳이다. <b>멀리 떨어진 값일수록 비교될 확률이 낮다</b> —
+    그래서 n² 이 아니라 n log n 이 된다.
+  </span>
+</div>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>선형성으로 다 더한다</b><br><br>
+  𝔼[<i>C</i>] = Σ<sub><i>i</i>&lt;<i>j</i></sub> 2/(<i>j</i>−<i>i</i>+1)
+  = <b>2(n+1)H<sub>n</sub> − 4n</b> &nbsp;
+  <span class="cmt">(H<sub>n</sub> = 1 + 1/2 + … + 1/n, 조화수)</span><br><br>
+  H<sub>n</sub> ≈ ln n 이므로 &nbsp; 𝔼[<i>C</i>] ≈ <b>2n ln n = 1.386 · n log₂n</b><br>
+  <span class="cmt">
+    <b>2 ln 2 = 1.3863</b> 이 그 상수다. 병합 정렬(n log₂n)보다 비교를 <b>39% 더 하지만</b>,
+    한 번의 비교가 싸고 추가 메모리가 없어 실제로는 더 빠른 경우가 많다.
+  </span>
+</div>
+
+<table>
+  <tr><th class="num">n</th><th class="num">공식 2(n+1)H<sub>n</sub> − 4n</th>
+      <th class="num">Σ 2/(j−i+1)</th><th class="num">실측 (20만 회 평균)</th></tr>
+  <tr><td class="num">5</td><td class="num">7.4000</td><td class="num">7.4000</td><td class="num">7.4013</td></tr>
+  <tr><td class="num">10</td><td class="num">24.4373</td><td class="num">24.4373</td><td class="num">24.4442</td></tr>
+  <tr><td class="num">20</td><td class="num">71.1051</td><td class="num">71.1051</td><td class="num">71.0915</td></tr>
+  <tr><td class="num">50</td><td class="num">258.9189</td><td class="num">258.9189</td><td class="num">258.9153</td></tr>
+</table>
+
+<p style="font-size:14px; color:var(--muted)">
+  ↑ 가운데 두 열은 <b>손으로 유도한 식</b>이고, 마지막 열은 <b>실제로 20만 번 돌려 센 평균</b>이다.
+  소수 둘째 자리까지 맞는다. <b>기댓값은 추측이 아니라 계산이다.</b>
+</p>
+
+<div class="viz">
+<h3>🔬 시연 — 평균으로 정말 수렴하나</h3>
+<p style="font-size:14.5px; margin-top:0">
+  무작위 배열을 퀵 정렬로 돌리며 <b>비교 횟수의 누적 평균</b>을 그린다.
+  회색 선이 위에서 유도한 <b>이론값</b>이다. 몇 번쯤 돌려야 믿을 만해지는지 보라.
+</p>
+<div class="ctl">
+  <button class="primary" id="q-run">1,000판 더 돌리기</button>
+  <button id="q-reset">처음부터</button>
+  <span class="hint">n = <b id="q-n">20</b> · 이론값 <b id="q-th">71.11</b></span>
+</div>
+<canvas id="q-cv" width="900" height="240"></canvas>
+<div class="tiles" style="margin-top:14px">
+  <div class="tile"><div class="t">돌린 판 수</div><div class="n" id="q-t">0</div><div class="f">표본 크기</div></div>
+  <div class="tile hi"><div class="t">표본평균</div><div class="n" id="q-m">—</div><div class="f">실제로 센 것</div></div>
+  <div class="tile"><div class="t">이론 기댓값</div><div class="n" id="q-e">71.11</div><div class="f">2(n+1)H−4n</div></div>
+  <div class="tile"><div class="t">차이</div><div class="n" id="q-d">—</div><div class="f">표본평균 − 이론</div></div>
+</div>
+<div class="say" id="q-say">▶ 를 눌러 돌려 보라.</div>
+</div>
+
+<div class="link">
+  <b>⭐ 이것이 Topic 10 의 예고편이다.</b>
+  판을 늘릴수록 표본평균이 이론값에 붙는다 — <b>큰 수의 법칙</b>.
+  <b>얼마나 빨리</b> 붙는지, <b>몇 판이면 충분한지</b>에 답하는 것이 <b>중심극한정리</b>다.
+  Topic 10 에서 이 그림을 다시 만난다.
+</div>
+
+<h2>5. 최악의 경우 — 평균만 믿으면 안 되는 이유</h2>
+
+<p>
+  퀵 정렬의 평균은 훌륭하다. 그런데 <b>pivot 을 늘 첫 원소로 고르면</b>
+  <b>이미 정렬된 배열</b>에서 최악이 된다. 매번 한쪽이 텅 비어 재귀가 n 단계까지 내려간다.
+</p>
+
+<div class="eq" style="border-left-color:var(--orange)">
+  정렬된 배열 · pivot = 첫 원소 → 비교 (n−1) + (n−2) + … + 1 = <b>n(n−1)/2</b>
+  <span class="cmt">— 선택 정렬과 똑같아졌다.</span><br>
+  <span class="cmt">
+    ⚠️ <b>가장 흔한 입력이 하필 최악</b>이라는 것이 고약하다.
+    "거의 정렬된 데이터"는 실무에서 매우 자주 들어온다.
+  </span>
+</div>
+
+<p>
+  위 시연에서 <b>"정렬된 배열로"</b> 를 누르고 퀵 정렬을 돌려 보라.
+  비교 횟수가 <b>n²/2 로 뛰는 것</b>이 눈에 보인다.
+</p>
+
+<h3>해결 — 무작위성을 우리가 집어넣는다</h3>
+
+<div class="cards c2">
+  <div class="card no">
+    <span class="lbl">문제의 구조</span>
+    <b>"입력이 무작위다"라고 가정했다</b><br>
+    §4 의 유도는 <b>입력 순열이 균등분포</b>라는 전제 위에 있다.
+    현실의 입력은 균등하지 않다.
+  </div>
+  <div class="card ok">
+    <span class="lbl">해결</span>
+    <b>pivot 을 무작위로 고른다</b><br>
+    그러면 <b>입력이 무엇이든</b> 평균 성능이 보장된다.
+    무작위성이 <b>입력이 아니라 알고리즘 안에</b> 있게 된다.
+  </div>
+</div>
+
+<div class="note">
+  <b>⚠️ 이 차이는 생각보다 크다.</b><br>
+  · <b>입력이 무작위라고 가정</b> → "운 나쁜 입력"이 존재하고, 공격자가 그것을 고를 수 있다<br>
+  · <b>알고리즘이 무작위를 만든다</b> → <b>어떤 입력에도</b> 기대 성능이 같다.
+  운이 나쁠 확률은 있지만 <b>입력이 정하지 못한다</b><br>
+  이런 알고리즘을 <b>randomized algorithm</b> 이라 한다.
+  <b>Topic 11 (몬테카를로)</b> 에서 이 발상을 정면으로 다룬다.
+</div>
+
+<h2>6. 한 장으로 정리</h2>
+
+<table>
+  <tr><th style="width:230px">Topic 3 에서 배운 것</th><th>정렬 분석에서 이렇게 쓰인다</th></tr>
+  <tr><td>확률변수 (슬라이드 10)</td>
+      <td><b>C = 비교 횟수.</b> Ω = 모든 입력 순열, C(순열) = 그때의 비교 횟수</td></tr>
+  <tr><td>기댓값 (14)</td><td><b>평균 성능</b> 그 자체 — "평균 O(n log n)" 의 평균</td></tr>
+  <tr><td>⭐ 선형성 (15)</td>
+      <td>비교들이 <b>서로 얽혀 있어도</b> 그냥 더할 수 있다. 이게 없으면 유도가 불가능하다</td></tr>
+  <tr><td>⭐ Indicator (17)</td>
+      <td>"이 둘을 비교하나?"에 0/1 을 붙여 <b>세는 문제를 확률 문제로</b> 바꾼다</td></tr>
+  <tr><td>평균의 함정 (23)</td>
+      <td>퀵 정렬 평균은 좋지만 <b>최악은 n²</b>. 그래서 pivot 을 무작위로 고른다</td></tr>
+  <tr><td>표본평균 ≈ 기댓값 (?)</td><td>시연의 수렴 그림 — 근거는 <b>Topic 10</b> 에서</td></tr>
+</table>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — <b>"평균 O(n log n)"</b> 은 어림짐작이 아니다.
+  <b>비교 하나하나에 indicator 를 붙이고 선형성으로 더한</b> 계산의 결과다.
+  그 계산에서 확률을 쓴 곳은 <b>딱 한 줄</b>이다 —
+  삽입 정렬은 <b>1/2</b>, 퀵 정렬은 <b>2/(j−i+1)</b>.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 3 슬라이드 26번 보충 &nbsp;·&nbsp;
+  표의 실측값은 시드 20260302 로 20만 회 모의실험한 결과다 &nbsp;·&nbsp;
+  Topic 10(수렴) · Topic 11(무작위 알고리즘) 으로 이어진다 &nbsp;·&nbsp;
+  시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+/* ══════════ 정렬 애니메이션 ══════════
+   각 알고리즘을 제너레이터로 쓴다. yield 할 때마다 한 걸음이 그려진다.
+   상태는 {hl:{인덱스:클래스}, say:"설명"} 로 넘긴다. */
+(function(){
+  const $ = id => document.getElementById(id);
+  const barsEl = $("s-bars");
+
+  let a = [], N = 20, cmp = 0, wr = 0, gen = null, timer = null, algo = "insertion";
+
+  /* ── 알고리즘들 ── */
+  function* selection(a){
+    const n = a.length;
+    for (let i = 0; i < n; i++){
+      let m = i;
+      yield { hl: { [i]: "swap" }, say: `<b>${i}번 자리</b>를 채울 차례 — 남은 것 중 최소를 찾는다` };
+      for (let j = i + 1; j < n; j++){
+        cmp++;
+        yield { hl: { [m]: "pivot", [j]: "cmp" }, say: `비교: 지금까지 최소(${a[m]}) vs ${a[j]}` };
+        if (a[j] < a[m]) m = j;
+      }
+      if (m !== i){ [a[i], a[m]] = [a[m], a[i]]; wr++; }
+      yield { hl: { [i]: "done" }, say: `최소 <b>${a[i]}</b> 를 ${i}번 자리로. <b>비교는 입력과 무관하게 늘 n−i−1 번</b>` };
+    }
+  }
+
+  function* insertion(a){
+    const n = a.length;
+    for (let i = 1; i < n; i++){
+      const key = a[i];
+      let j = i - 1;
+      yield { hl: { [i]: "pivot" }, say: `<b>${key}</b> 를 왼쪽 정렬된 부분에 끼워 넣는다` };
+      while (j >= 0){
+        cmp++;
+        yield { hl: { [j]: "cmp", [j + 1]: "pivot" }, say: `비교: ${a[j]} > ${key} ?` };
+        if (a[j] <= key) break;
+        a[j + 1] = a[j]; wr++; j--;
+        yield { hl: { [j + 2]: "swap" }, say: `크니까 오른쪽으로 민다 — <b>역전(inversion) 하나를 푼 것</b>` };
+      }
+      a[j + 1] = key; wr++;
+    }
+    yield { hl: {}, say: `끝. <b>민 횟수</b>가 곧 <b>역전의 개수</b>다 — 평균 n(n−1)/4` };
+  }
+
+  function* bubble(a){
+    const n = a.length;
+    for (let i = 0; i < n - 1; i++){
+      let swapped = false;
+      for (let j = 0; j < n - 1 - i; j++){
+        cmp++;
+        yield { hl: { [j]: "cmp", [j + 1]: "cmp" }, say: `이웃 비교: ${a[j]} vs ${a[j + 1]}` };
+        if (a[j] > a[j + 1]){
+          [a[j], a[j + 1]] = [a[j + 1], a[j]]; wr++; swapped = true;
+          yield { hl: { [j]: "swap", [j + 1]: "swap" }, say: `순서가 틀렸다 → 교환` };
+        }
+      }
+      yield { hl: { [n - 1 - i]: "done" }, say: `가장 큰 값 <b>${a[n - 1 - i]}</b> 가 뒤로 떠올랐다` };
+      if (!swapped){ yield { hl: {}, say: `한 바퀴 돌아도 교환이 없다 → <b>이미 정렬됐다</b>` }; break; }
+    }
+  }
+
+  function* mergesort(a){
+    const buf = a.slice();
+    function* ms(lo, hi){
+      if (hi - lo < 2) return;
+      const mid = (lo + hi) >> 1;
+      yield { hl: {}, say: `[${lo}..${hi - 1}] 을 <b>반으로 쪼갠다</b>` };
+      yield* ms(lo, mid); yield* ms(mid, hi);
+      let i = lo, j = mid, k = lo;
+      while (i < mid && j < hi){
+        cmp++;
+        yield { hl: { [i]: "cmp", [j]: "cmp" }, say: `합치는 중 — ${a[i]} vs ${a[j]}` };
+        buf[k++] = (a[i] <= a[j]) ? a[i++] : a[j++]; wr++;
+      }
+      while (i < mid){ buf[k++] = a[i++]; wr++; }
+      while (j < hi){ buf[k++] = a[j++]; wr++; }
+      for (let t = lo; t < hi; t++) a[t] = buf[t];
+      yield { hl: Object.fromEntries(
+                Array.from({ length: hi - lo }, (_, t) => [lo + t, "done"])),
+              say: `[${lo}..${hi - 1}] 병합 완료. <b>이동 횟수는 입력과 무관하다</b>` };
+    }
+    yield* ms(0, a.length);
+  }
+
+  function* quicksort(a){
+    function* qs(lo, hi){
+      if (lo >= hi) return;
+      const p = a[hi];                       // pivot = 마지막 원소
+      yield { hl: { [hi]: "pivot" }, say: `pivot = <b>${p}</b> — 이보다 작은 것과 큰 것으로 가른다` };
+      let i = lo;
+      for (let j = lo; j < hi; j++){
+        cmp++;
+        yield { hl: { [hi]: "pivot", [j]: "cmp" }, say: `${a[j]} < ${p} ?` };
+        if (a[j] < p){
+          if (i !== j){ [a[i], a[j]] = [a[j], a[i]]; wr++;
+            yield { hl: { [hi]: "pivot", [i]: "swap", [j]: "swap" }, say: `작다 → 왼쪽으로 보낸다` }; }
+          i++;
+        }
+      }
+      [a[i], a[hi]] = [a[hi], a[i]]; wr++;
+      yield { hl: { [i]: "done" }, say: `pivot <b>${p}</b> 가 제자리(${i})를 찾았다 — <b>이제 이 자리는 끝</b>` };
+      yield* qs(lo, i - 1); yield* qs(i + 1, hi);
+    }
+    yield* qs(0, a.length - 1);
+  }
+
+  const ALGOS = {
+    selection: ["선택 정렬", selection],
+    insertion: ["삽입 정렬", insertion],
+    bubble:    ["버블 정렬", bubble],
+    merge:     ["병합 정렬", mergesort],
+    quick:     ["퀵 정렬",   quicksort],
+  };
+
+  /* ── 그리기 ── */
+  function paint(hl = {}){
+    const mx = Math.max(...a, 1);
+    barsEl.innerHTML = "";
+    a.forEach((v, i) => {
+      const d = document.createElement("div");
+      d.className = "bar" + (hl[i] ? " " + hl[i] : "");
+      d.style.height = (12 + (v / mx) * 168) + "px";
+      barsEl.appendChild(d);
+    });
+    $("s-c").textContent = cmp;
+    $("s-w").textContent = wr;
+  }
+
+  function stats(){
+    $("s-nn").textContent = N;
+    $("s-n2").textContent = Math.round(N * N / 2);
+    $("s-nlg").textContent = Math.round(N * Math.log2(N));
+  }
+
+  function reset(kind){
+    N = +$("s-n").value;
+    a = Array.from({ length: N }, (_, i) => i + 1);
+    if (kind === "rev") a.reverse();
+    else if (kind !== "sorted") for (let i = N - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]];
+    }
+    cmp = wr = 0; gen = null; stop();
+    stats(); paint();
+    $("s-say").innerHTML = { sorted: "<b>이미 정렬된 배열</b>이다. 삽입 정렬과 퀵 정렬을 각각 돌려 보라.",
+                             rev: "<b>역순 배열</b>이다. 삽입 정렬의 최악이다." }[kind]
+                          || "무작위 배열을 만들었다. ▶ 실행을 누르라.";
+  }
+
+  function step(){
+    if (!gen){ cmp = wr = 0; gen = ALGOS[algo][1](a); }
+    const r = gen.next();
+    if (r.done){
+      stop(); gen = null; paint({});
+      $("s-say").innerHTML = `<b>${ALGOS[algo][0]} 완료</b> — 비교 <b>${cmp}</b>회 · 이동 <b>${wr}</b>회. `
+        + `(n²/2 = ${Math.round(N * N / 2)} · n log₂n = ${Math.round(N * Math.log2(N))})`;
+      return false;
+    }
+    paint(r.value.hl); $("s-say").innerHTML = r.value.say;
+    return true;
+  }
+
+  function stop(){ if (timer){ clearInterval(timer); timer = null; } $("s-run").textContent = "▶ 실행"; }
+  function run(){
+    if (timer){ stop(); return; }
+    $("s-run").textContent = "⏸ 멈춤";
+    const delay = Math.max(4, 320 - +$("s-sp").value * 5);
+    timer = setInterval(() => { if (!step()) stop(); }, delay);
+  }
+
+  // 알고리즘 버튼
+  Object.entries(ALGOS).forEach(([k, [name]]) => {
+    const b = document.createElement("button");
+    b.textContent = name; b.dataset.k = k;
+    b.onclick = () => {
+      algo = k; gen = null; stop(); cmp = wr = 0;
+      [...$("s-algo").children].forEach(x => x.classList.toggle("on", x.dataset.k === k));
+      paint(); $("s-say").innerHTML = `<b>${name}</b> 을 골랐다. ▶ 실행을 누르라.`;
+    };
+    if (k === algo) b.classList.add("on");
+    $("s-algo").appendChild(b);
+  });
+
+  $("s-run").onclick = run;
+  $("s-step").onclick = () => { stop(); step(); };
+  $("s-shuffle").onclick = () => reset("rand");
+  $("s-sorted").onclick = () => reset("sorted");
+  $("s-rev").onclick = () => reset("rev");
+  $("s-n").oninput = () => reset("rand");
+  reset("rand");
+})();
+</script>
+
+<script>
+/* ══════════ Big-O 세 곡선 ══════════ */
+(function(){
+  const $ = id => document.getElementById(id);
+  const cv = $("o-cv"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, L = 52, B = 34, T = 14, R = 12;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  function draw(){
+    const nmax = +$("o-n").value;
+    $("o-vn").textContent = nmax;
+    const f = { lg: n => n * Math.log2(Math.max(n, 2)), sq: n => n * n / 2, lin: n => n };
+    const ymax = f.sq(nmax);
+
+    const px = n => L + (n / nmax) * (W - L - R);
+    const py = v => (H - B) - (v / ymax) * (H - B - T);
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = css("--line"); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, H - B); ctx.lineTo(W - R, H - B); ctx.stroke();
+    ctx.fillStyle = css("--muted"); ctx.font = "11.5px Consolas, monospace";
+    ctx.textAlign = "center";
+    for (let k = 0; k <= 4; k++) ctx.fillText(Math.round(nmax * k / 4), px(nmax * k / 4), H - B + 16);
+    ctx.textAlign = "right";
+    ctx.fillText(ymax.toExponential(1), L - 6, T + 10);
+    ctx.fillText("0", L - 6, H - B);
+    ctx.textAlign = "left";
+    ctx.fillText("n →", L + 4, T + 10);
+
+    const curve = (fn, color, w) => {
+      ctx.strokeStyle = color; ctx.lineWidth = w; ctx.beginPath();
+      for (let n = 1; n <= nmax; n += Math.max(1, nmax / 400)){
+        const x = px(n), y = py(fn(n));
+        n === 1 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    };
+    curve(f.lin, css("--muted"), 1.5);
+    curve(f.lg,  css("--teal"),  2.5);
+    curve(f.sq,  css("--pink"),  2.5);
+
+    ctx.font = "bold 12.5px Consolas, monospace";
+    ctx.fillStyle = css("--pink");  ctx.fillText("n²/2",     L + 10, T + 30);
+    ctx.fillStyle = css("--teal");  ctx.fillText("n log₂n",  L + 10, T + 48);
+    ctx.fillStyle = css("--muted"); ctx.fillText("n",        L + 10, T + 66);
+
+    const ratio = f.sq(nmax) / f.lg(nmax);
+    $("o-msg").innerHTML = `n = ${nmax} 에서 <b>n²/2 는 n log₂n 의 ${ratio.toFixed(1)}배</b>다. `
+      + (nmax <= 30 ? "아직은 차이가 작다 — <b>작은 배열에서 삽입 정렬이 이기는 이유.</b>"
+                    : "n 을 더 키워 보라. 격차가 <b>걷잡을 수 없이</b> 벌어진다.");
+  }
+  $("o-n").addEventListener("input", draw);
+  draw();
+})();
+
+/* ══════════ 퀵 정렬 비교 횟수의 표본평균이 이론값으로 수렴 ══════════ */
+(function(){
+  const $ = id => document.getElementById(id);
+  const cv = $("q-cv"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, L = 56, B = 30, T = 16, R = 14;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  const N = 20;
+  const H_n = n => { let s = 0; for (let k = 1; k <= n; k++) s += 1 / k; return s; };
+  const THEORY = 2 * (N + 1) * H_n(N) - 4 * N;      // = 71.1051…
+
+  let seed = 20260302 % 2147483647;                  // MINSTD — 2^53 안전
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  let trials = 0, sum = 0, path = [];
+
+  function qsCount(arr){
+    let c = 0;
+    (function qs(a){
+      if (a.length <= 1) return;
+      const p = a[0], lo = [], hi = [];
+      for (let i = 1; i < a.length; i++){ c++; (a[i] < p ? lo : hi).push(a[i]); }
+      qs(lo); qs(hi);
+    })(arr);
+    return c;
+  }
+  const shuffled = () => {
+    const a = Array.from({ length: N }, (_, i) => i);
+    for (let i = N - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  };
+
+  function draw(){
+    ctx.clearRect(0, 0, W, H);
+    const lo = THEORY - 22, hi = THEORY + 22;
+    const px = i => L + (i / Math.max(path.length - 1, 1)) * (W - L - R);
+    const py = v => (H - B) - ((v - lo) / (hi - lo)) * (H - B - T);
+
+    ctx.strokeStyle = css("--line"); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, H - B); ctx.lineTo(W - R, H - B); ctx.stroke();
+    ctx.fillStyle = css("--muted"); ctx.font = "11.5px Consolas, monospace"; ctx.textAlign = "right";
+    [lo, THEORY, hi].forEach(v => ctx.fillText(v.toFixed(1), L - 6, py(v) + 4));
+
+    // 이론값 기준선
+    ctx.strokeStyle = css("--muted"); ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]);
+    ctx.beginPath(); ctx.moveTo(L, py(THEORY)); ctx.lineTo(W - R, py(THEORY)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.textAlign = "left"; ctx.fillStyle = css("--ink"); ctx.font = "bold 12px Consolas, monospace";
+    ctx.fillText("이론 " + THEORY.toFixed(2), L + 8, py(THEORY) - 7);
+
+    // 누적 평균
+    if (path.length > 1){
+      ctx.strokeStyle = css("--accent"); ctx.lineWidth = 2; ctx.beginPath();
+      path.forEach((v, i) => i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(i), py(v)));
+      ctx.stroke();
+    }
+    ctx.textAlign = "center"; ctx.fillStyle = css("--muted"); ctx.font = "11.5px Consolas, monospace";
+    ctx.fillText(trials + "판", W / 2, H - B + 18);
+  }
+
+  function run(){
+    for (let i = 0; i < 1000; i++){
+      sum += qsCount(shuffled()); trials++;
+      if (trials % Math.max(1, Math.floor(trials / 400) + 1) === 0 || trials < 50)
+        path.push(sum / trials);
+    }
+    const m = sum / trials, d = m - THEORY;
+    $("q-t").textContent = trials.toLocaleString("en-US");
+    $("q-m").textContent = m.toFixed(3);
+    $("q-d").textContent = (d >= 0 ? "+" : "") + d.toFixed(3);
+    $("q-say").innerHTML = `${trials.toLocaleString("en-US")}판의 표본평균 <b>${m.toFixed(3)}</b>, `
+      + `이론 기댓값 <b>${THEORY.toFixed(3)}</b>, 차이 <b>${d.toFixed(3)}</b>. `
+      + (trials >= 5000 ? "소수 첫째 자리까지 붙었다 — <b>기댓값은 계산으로 미리 알 수 있다.</b>"
+                        : "더 돌려 보라. <b>판이 늘수록 선이 회색 기준선에 달라붙는다.</b>");
+    draw();
+  }
+
+  $("q-n").textContent = N;
+  $("q-th").textContent = THEORY.toFixed(2);
+  $("q-e").textContent = THEORY.toFixed(2);
+  $("q-run").onclick = run;
+  $("q-reset").onclick = () => {
+    seed = 20260302 % 2147483647; trials = 0; sum = 0; path = [];
+    $("q-t").textContent = "0"; $("q-m").textContent = "—"; $("q-d").textContent = "—";
+    $("q-say").innerHTML = "처음으로 되돌렸다."; draw();
+  };
+  draw();
+})();
+</script>
+</body>
+</html>

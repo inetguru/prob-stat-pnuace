@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>손실함수와 Risk — 기계학습은 무엇의 기댓값을 줄이는가</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cmt{color:var(--muted); font-size:14px}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  .card.ok .lbl{color:var(--teal); background:#e6f6f3}
+  .card.no .lbl{color:var(--orange); background:#fdf1e3}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .ctl{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+  button{font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--body);
+    border-radius:7px; padding:8px 13px; transition:all .12s}
+  button:hover:not(:disabled){border-color:var(--accent); color:var(--accent)}
+  button:disabled{opacity:.45; cursor:default}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  button.primary:hover:not(:disabled){filter:brightness(1.08); color:#fff}
+  .hint{font-size:13px; color:var(--muted); margin-left:auto}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft)}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:23px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile .f{font-size:11.5px; color:var(--muted); font-family:Consolas,monospace}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  canvas{max-width:100%; display:block}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(2,1fr)}
+  }
+  .lossrow{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media (max-width:760px){ .lossrow{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>손실함수와 Risk</h1>
+<p class="sub">
+  확률통계 · Topic 3 보충자료 — 슬라이드 <b>26번 (→AI 연결점)</b> 의 <b>ML · Risk = 손실의 기댓값</b>
+</p>
+
+<p>
+  슬라이드에서 <b>"학습 목표는 𝔼[ℓ(<i>y</i>, <i>ŷ</i>)] 를 줄이는 것"</b> 이라고
+  한 줄로 지나갔다. 이 문장에는 <b>오늘 배운 것이 통째로</b> 들어 있다.
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">ℓ 은 함수</span>
+    <b>손실함수 (loss)</b><br>
+    한 건이 얼마나 틀렸는지를 <b>숫자 하나</b>로 잰다.
+  </div>
+  <div class="card">
+    <span class="lbl">ℓ(Y, Ŷ) 는 확률변수</span>
+    <b>결과가 무작위다</b><br>
+    데이터가 무작위이므로 손실도 <b>확률변수</b>다 (슬라이드 10번).
+  </div>
+  <div class="card">
+    <span class="lbl">E[·] 는 기댓값</span>
+    <b>Risk</b><br>
+    그 확률변수의 <b>평균</b>. 학습은 이 값을 낮추는 일이다.
+  </div>
+</div>
+
+<div class="note">
+  <b>⚠️ 순서를 거꾸로 읽지 말 것.</b>
+  "손실을 줄인다"가 아니라 <b>"손실의 <u>기댓값</u>을 줄인다"</b> 이다.
+  한 건의 손실은 줄이려야 줄일 수가 없다 — <b>이미 일어난 일</b>이다.
+  우리가 고르는 것은 <b>앞으로 마주칠 데이터 전체에 대한 평균</b>이다.
+</div>
+
+<h2>1. 세 단어를 순서대로</h2>
+
+<h3>① 손실함수 ℓ — 틀린 정도를 숫자로 대응시킨다</h3>
+
+<p>
+  정답이 <i>y</i>, 모델의 예측이 <i>ŷ</i> 일 때
+  <b>얼마나 틀렸는가를 실수 하나로 대응시키는 함수</b>가 손실함수다.
+</p>
+
+<div class="eq">
+  ℓ(<i>y</i>, <i>ŷ</i>) : (정답, 예측) &nbsp;→&nbsp; ℝ<sub>≥0</sub><br>
+  <span class="cmt">
+    맞히면 0 에 가깝고, 크게 틀릴수록 큰 수. <b>슬라이드 4번의 "일반화"가 여기서도 그대로다</b> —
+    "고양이를 개라고 했다" 같은 <b>의미</b>를 벗겨내고 <b>숫자 하나</b>로 만든다.
+    그래야 더하고 평균 낼 수 있다.
+  </span>
+</div>
+
+<h3>② 손실은 확률변수다</h3>
+
+<p>
+  모델을 하나 정해 놓아도 손실값은 <b>어떤 데이터가 들어오느냐에 따라 달라진다.</b>
+  들어올 데이터 <i>(X, Y)</i> 가 무작위이므로 <b>ℓ(Y, ŷ(X)) 는 확률변수</b>다.
+  슬라이드 10번의 정의 그대로 — <b>결과에 숫자를 대응시키는 함수</b>다.
+</p>
+
+<div class="eq">
+  Ω &nbsp;(들어올 수 있는 데이터 전체) &nbsp;<b>→</b>&nbsp; ℝ &nbsp;(그때의 손실값)
+</div>
+
+<h3>③ Risk = 그 확률변수의 기댓값</h3>
+
+<div class="eq" style="border-left-color:var(--pink)">
+  <b>R</b>(모델) = 𝔼[ ℓ(<i>Y</i>, <i>ŷ</i>(<i>X</i>)) ] &nbsp;=&nbsp; Σ ℓ의 값 × 그 값이 나올 확률<br>
+  <span class="cmt">슬라이드 14번의 <b>"값 × 확률의 합"</b> 과 완전히 같은 식이다.</span>
+</div>
+
+<p>
+  <b>학습(training)이란 이 R 을 가장 작게 만드는 모델을 고르는 일</b>이다.
+  기계학습 교과서가 <b>"위험 최소화(risk minimization)"</b> 라고 부르는 것이 이것이다.
+</p>
+
+<h2>2. 문제는 — 그 기댓값을 계산할 수가 없다</h2>
+
+<p>
+  기댓값을 구하려면 <b>PMF 가 필요하다.</b> 슬라이드 14번의 식을 다시 보자.
+</p>
+
+<div class="eq">
+  𝔼[<i>X</i>] = Σ<sub><i>x</i></sub> <i>x</i> · <i>p<sub>X</sub></i>(<i>x</i>) &nbsp;
+  <span class="cmt">← <b>p<sub>X</sub></b> 를 알아야 계산이 된다</span>
+</div>
+
+<p>
+  그런데 실제 문제에서 <b>"세상의 모든 고양이 사진과 개 사진의 분포"</b> 를 아는 사람은 없다.
+  분포를 모르니 <b>진짜 Risk 는 영원히 계산할 수 없다.</b>
+</p>
+
+<p>
+  그래서 실제로 하는 일은 이것이다 — <b>가진 데이터로 평균을 낸다.</b>
+</p>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>경험적 위험 (empirical risk)</b><br>
+  R̂ = (1/<i>n</i>) · Σ<sub><i>i</i>=1..<i>n</i></sub> ℓ(<i>y<sub>i</sub></i>, <i>ŷ</i>(<i>x<sub>i</sub></i>))<br>
+  <span class="cmt">
+    <b>진짜 평균(기댓값)</b> 자리에 <b>데이터의 평균</b>을 대신 넣었다.
+    확률을 모르니 <b>세어서 대신한다</b> — Topic 2 의 스팸 필터와 같은 발상이다.
+  </span>
+</div>
+
+<div class="link">
+  <b>⭐ "그렇게 해도 되는가?" 가 Topic 10 이다.</b>
+  데이터의 평균이 진짜 기댓값에 다가간다는 보장이 <b>큰 수의 법칙(LLN)</b> 이고,
+  얼마나 빨리 다가가는지가 <b>중심극한정리(CLT)</b> 다.
+  <b>지금은 "된다고 치고" 쓰지만, 그 근거는 Topic 10 에서 갚는다.</b>
+  슬라이드 26번이 "왜 그래도 되는가는 Topic 10이 답한다"고 적어 둔 이유다.
+</div>
+
+<h2>3. 손실함수 네 가지 — 무엇을 아프게 여기느냐가 다르다</h2>
+
+<p>
+  손실함수는 하나가 아니다. <b>어떤 실수를 더 아프게 여길지</b>를 정하는 것이 손실함수를 고르는 일이다.
+</p>
+
+<table>
+  <tr><th style="width:150px">이름</th><th style="width:200px">ℓ(y, ŷ)</th><th>무엇을 아프게 여기나</th></tr>
+  <tr>
+    <td><b>제곱오차</b><br><span class="cmt" style="font-size:13px">squared error · MSE</span></td>
+    <td class="num">(y − ŷ)²</td>
+    <td><b>크게 틀린 것을 아주 아프게.</b> 10만큼 틀리면 1만큼 틀린 것의 <b>100배</b> 벌점.
+        <b>이상치에 끌려간다.</b></td>
+  </tr>
+  <tr>
+    <td><b>절대오차</b><br><span class="cmt" style="font-size:13px">absolute error · MAE</span></td>
+    <td class="num">| y − ŷ |</td>
+    <td>틀린 만큼만 벌점. <b>이상치에 덜 흔들린다.</b></td>
+  </tr>
+  <tr>
+    <td><b>0-1 손실</b><br><span class="cmt" style="font-size:13px">분류</span></td>
+    <td class="num">맞으면 0, 틀리면 1</td>
+    <td>맞았나 틀렸나만 본다. <b>얼마나 아슬아슬했는지는 무시.</b></td>
+  </tr>
+  <tr>
+    <td><b>교차 엔트로피</b><br><span class="cmt" style="font-size:13px">cross-entropy</span></td>
+    <td class="num">− log ŷ(정답)</td>
+    <td><b>확신을 갖고 틀린 것</b>을 아주 아프게. 정답에 준 확률이 0 에 가까우면 손실이 무한대로 간다.</td>
+  </tr>
+</table>
+
+<div class="link">
+  <b>0-1 손실은 이미 만났다.</b> 그 기댓값이 무엇인지 계산해 보라 —<br>
+  𝔼[0-1 손실] = 0 × ℙ[맞음] + 1 × ℙ[틀림] = <b>ℙ[틀림]</b>.
+  <b>곧 오류율</b>이다. 슬라이드 17번의 <b>indicator</b> 가 바로 이 꼴이다 —
+  <b>"세는 문제를 평균 문제로"</b> 바꾼 그 도구.<br>
+  <b>교차 엔트로피는 Topic 5 에서 정면으로 다룬다.</b> 왜 하필 log 인지도 거기서 답한다.
+</div>
+
+<h3>MSE 와 MAE 는 서로 다른 답을 내놓는다</h3>
+
+<p>
+  데이터 <code>1, 2, 3, 100</code> 을 <b>상수 하나</b>로 예측한다고 하자.
+  어떤 상수가 가장 좋을까? <b>손실함수를 무엇으로 고르느냐에 따라 답이 달라진다.</b>
+</p>
+
+<table>
+  <tr><th>예측 상수 c</th><th class="num">MSE</th><th class="num">MAE</th><th>정체</th></tr>
+  <tr><td>c = 2.5</td><td class="num">2377.25</td><td class="num"><b>25.00</b></td><td><b>중앙값</b> — MAE 를 최소로 만든다</td></tr>
+  <tr><td>c = 26.5</td><td class="num"><b>1801.25</b></td><td class="num">36.75</td><td><b>평균</b> — MSE 를 최소로 만든다</td></tr>
+</table>
+
+<div class="eq">
+  <b>MSE 를 최소로 만드는 상수 = 평균</b> &nbsp;·&nbsp;
+  <b>MAE 를 최소로 만드는 상수 = 중앙값</b><br>
+  <span class="cmt">
+    100 이라는 이상치 하나가 평균을 26.5 까지 끌어올렸다.
+    <b>"MSE 를 쓴다"는 것은 "이상치에 끌려가겠다"고 선언하는 것</b>과 같다.
+  </span>
+</div>
+
+<div class="viz">
+<h3>🔬 시연 — 이상치 하나가 답을 어디까지 끌고 가나</h3>
+<p style="font-size:14.5px; margin-top:0">
+  네 번째 값을 슬라이더로 움직여 보라. <b>MSE 를 최소로 하는 예측(평균)</b> 은
+  따라 움직이고, <b>MAE 를 최소로 하는 예측(중앙값)</b> 은 꿈쩍하지 않는다.
+</p>
+
+<div class="sl" style="margin-bottom:10px">
+  <label>네 번째 값 <span class="val" id="l-vx">100</span></label>
+  <input type="range" id="l-x" min="3" max="120" value="100">
+</div>
+
+<canvas id="l-cv" width="900" height="150"></canvas>
+
+<div class="tiles">
+  <div class="tile"><div class="t">데이터</div><div class="n" style="font-size:17px" id="l-data">1, 2, 3, 100</div><div class="f">네 개</div></div>
+  <div class="tile hi"><div class="t">MSE 최적 = 평균</div><div class="n" id="l-mean">26.50</div><div class="f">이상치를 따라간다</div></div>
+  <div class="tile hi"><div class="t">MAE 최적 = 중앙값</div><div class="n" id="l-med">2.50</div><div class="f">꿈쩍하지 않는다</div></div>
+  <div class="tile"><div class="t">둘의 차이</div><div class="n" id="l-gap">24.00</div><div class="f">손실함수를 바꾼 대가</div></div>
+</div>
+</div>
+
+<h2>4. 왜 하필 <b>기댓값</b>인가 — 그리고 그것만으로 되는가</h2>
+
+<p>
+  기댓값을 쓰는 이유는 <b>슬라이드 15번의 선형성</b> 때문이다.
+  손실이 데이터 <i>n</i> 건에 흩어져 있어도, <b>전체의 분포를 몰라도</b> 조각마다 평균을 내서 더하면 된다.
+</p>
+
+<div class="eq">
+  𝔼[ℓ<sub>1</sub> + ℓ<sub>2</sub> + … + ℓ<sub><i>n</i></sub>]
+  = 𝔼[ℓ<sub>1</sub>] + 𝔼[ℓ<sub>2</sub>] + … + 𝔼[ℓ<sub><i>n</i></sub>]<br>
+  <span class="cmt">
+    <b>데이터끼리 독립이 아니어도 성립한다.</b> 이 성질 하나로 학습 알고리즘이
+    데이터를 <b>조각(mini-batch)</b> 으로 잘라 처리할 수 있다.
+  </span>
+</div>
+
+<div class="link">
+  <b>⭐ mini-batch 학습의 근거가 정확히 이것이다.</b>
+  데이터 100만 건의 평균 손실을 한 번에 계산하는 대신,
+  <b>무작위로 뽑은 32건의 평균</b>으로 대신한다. 선형성 덕에 그 32건의 평균은
+  <b>전체 평균의 불편 추정치</b>가 된다 — 어느 조각을 뽑든 기댓값이 같다.
+</div>
+
+<h3>그런데 평균만 보면 또 속는다</h3>
+
+<p>
+  Topic 3 이 내내 말한 경고가 여기서도 그대로 성립한다 —
+  <b>평균이 같아도 흩어짐이 다르면 전혀 다른 모델</b>이다 (슬라이드 23번).
+</p>
+
+<table>
+  <tr><th>모델</th><th class="num">평균 손실</th><th>실제로 하는 일</th></tr>
+  <tr><td><b>A</b></td><td class="num">0.10</td><td>모든 건에서 조금씩 틀린다. <b>고르게 그럭저럭</b></td></tr>
+  <tr><td><b>B</b></td><td class="num">0.10</td><td>99%는 완벽한데 <b>1%에서 크게 망가진다</b></td></tr>
+</table>
+
+<p>
+  Risk 만 보면 둘은 <b>똑같이 좋은 모델</b>이다. 그런데 자율주행이라면?
+  <b>B 는 100번에 한 번 사고를 낸다.</b>
+  그래서 실무에서는 평균 손실 옆에 <b>손실의 분포</b>를 같이 본다 —
+  최악의 경우, 상위 1% 손실, 부류별 손실.
+</p>
+
+<div class="note">
+  <b>⚠️ "평균적으로 괜찮다"가 위험한 이유를 오늘 배웠다.</b>
+  손실함수와 Risk 는 <b>Topic 3 의 두 축(기댓값·분산)</b> 을 그대로 쓴다.
+  기댓값은 <b>학습의 목표</b>가 되고, 분산은 <b>믿어도 되는지의 척도</b>가 된다.
+</div>
+
+<h2>5. 한 장으로 정리</h2>
+
+<table>
+  <tr><th style="width:210px">Topic 3 에서 배운 것</th><th>기계학습에서 이렇게 나타난다</th></tr>
+  <tr><td>확률변수 (슬라이드 10)</td><td>손실 ℓ(<i>Y</i>, <i>ŷ</i>(<i>X</i>)) — 데이터가 무작위라 손실도 확률변수</td></tr>
+  <tr><td>기댓값 = 값 × 확률의 합 (14)</td><td><b>Risk</b> — 학습이 최소화하려는 대상</td></tr>
+  <tr><td>선형성 (15)</td><td><b>mini-batch</b> 로 잘라 계산해도 되는 근거</td></tr>
+  <tr><td>Indicator (17)</td><td><b>0-1 손실</b> — 그 기댓값이 곧 오류율</td></tr>
+  <tr><td>분산 · 평균의 함정 (21·23)</td><td>평균 손실이 같아도 <b>최악의 경우가 다르다</b></td></tr>
+  <tr><td>데이터 평균 ≈ 기댓값 (?)</td><td><b>empirical risk</b> — 근거는 <b>Topic 10</b> 에서</td></tr>
+</table>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — 기계학습의 학습이란
+  <b>"손실이라는 확률변수의 기댓값을 가장 작게 만드는 모델을 고르는 일"</b> 이다.
+  분포를 모르니 <b>데이터 평균으로 대신</b>하고, 그래도 되는 이유는 Topic 10 에서 갚는다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 3 슬라이드 26번 보충 &nbsp;·&nbsp;
+  Topic 5(교차 엔트로피) · Topic 10(LLN·CLT) · Topic 12(MLE) 에서 이어진다 &nbsp;·&nbsp;
+  시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const cv = $("l-cv"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  const PAD = 56, BASE = 96, MAXV = 125;
+  const px = v => PAD + (v / MAXV) * (W - 2 * PAD);
+
+  function draw(){
+    const x4 = +$("l-x").value;
+    const d = [1, 2, 3, x4].sort((a, b) => a - b);
+    const mean = d.reduce((a, b) => a + b, 0) / 4;
+    const med  = (d[1] + d[2]) / 2;
+
+    $("l-vx").textContent = x4;
+    $("l-data").textContent = d.join(", ");
+    $("l-mean").textContent = mean.toFixed(2);
+    $("l-med").textContent  = med.toFixed(2);
+    $("l-gap").textContent  = (mean - med).toFixed(2);
+
+    ctx.clearRect(0, 0, W, H);
+
+    // 수직선
+    ctx.strokeStyle = css("--line"); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(PAD - 20, BASE); ctx.lineTo(W - PAD + 20, BASE); ctx.stroke();
+    ctx.fillStyle = css("--muted"); ctx.font = "12px Consolas, monospace"; ctx.textAlign = "center";
+    for (let v = 0; v <= 125; v += 25) ctx.fillText(v, px(v), BASE + 22);
+
+    // 데이터 점
+    d.forEach(v => {
+      ctx.beginPath(); ctx.arc(px(v), BASE, 8, 0, 7); 
+      ctx.fillStyle = css("--accent"); ctx.fill();
+    });
+
+    // 평균 · 중앙값 표시
+    const mark = (v, color, label, dy) => {
+      ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(px(v), BASE - 34); ctx.lineTo(px(v), BASE + 12); ctx.stroke();
+      ctx.fillStyle = color; ctx.font = "bold 13px 'Malgun Gothic', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(label + " " + v.toFixed(1), px(v), BASE + dy);
+    };
+    mark(med,  css("--teal"),  "중앙값(MAE)", -46);
+    mark(mean, css("--pink"),  "평균(MSE)",   -22);
+  }
+
+  $("l-x").addEventListener("input", draw);
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>정확도 99%의 함정 — Accuracy · Precision · Recall · F1</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+    --tp:#0d9488; --tn:#3b4fd8; --fp:#d97d17; --fn:#d9457f;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cmt{color:var(--muted); font-size:14px}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  .card.ok .lbl{color:var(--teal); background:#e6f6f3}
+  .card.no .lbl{color:var(--orange); background:#fdf1e3}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+
+  /* 혼동행렬 */
+  .cm{border-collapse:separate; border-spacing:6px; width:100%; margin:18px 0; table-layout:fixed}
+  .cm td,.cm th{border:none; text-align:center; padding:0}
+  .cm th{background:none; color:var(--muted); font-size:12.5px; font-weight:700;
+         letter-spacing:.5px; padding:4px 0}
+  .cm th.side{writing-mode:vertical-rl; transform:rotate(180deg); width:26px}
+  .cell{border-radius:9px; padding:14px 10px; color:#fff; min-height:92px;
+        display:flex; flex-direction:column; justify-content:center; transition:all .2s}
+  .cell .k{font-size:11.5px; font-weight:800; letter-spacing:1.4px; opacity:.9}
+  .cell .v{font-size:25px; font-weight:800; font-family:Consolas,monospace; line-height:1.25}
+  .cell .d{font-size:11.5px; opacity:.9; margin-top:2px}
+  .cell.tp{background:var(--tp)} .cell.tn{background:var(--tn)}
+  .cell.fp{background:var(--fp)} .cell.fn{background:var(--fn)}
+
+  /* 시연 틀 */
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .sliders{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:6px}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .sl .cap{font-size:12px; color:var(--muted)}
+  .ctl{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:14px 0 4px}
+  button{font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--body);
+    border-radius:7px; padding:8px 13px; transition:all .12s}
+  button:hover{border-color:var(--accent); color:var(--accent)}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  button.primary:hover{filter:brightness(1.08); color:#fff}
+
+  /* 척도 타일 */
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft)}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:23px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile .f{font-size:11.5px; color:var(--muted); font-family:Consolas,monospace}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  .tile.bad .n{color:var(--orange)}
+
+  canvas{max-width:100%; display:block}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; font-size:13px; margin-top:8px}
+  .legend i{display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:5px}
+
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .sliders{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>정확도 99% 의 함정</h1>
+<p class="sub">
+  확률통계 · Topic 2 보충자료 — 슬라이드 <b>7번 (10만 명을 직접 세어 본다)</b> ·
+  <b>30번 (→AI 연결점)</b>
+</p>
+
+<p>
+  슬라이드 30번에서 <b>"accuracy 대신 PPV · recall · F1 을 보는 이유가 오늘 그림에 있다"</b>
+  라고만 하고 지나갔다. 그 말이 무슨 뜻인지 여기서 끝까지 본다.
+</p>
+
+<div class="note">
+  <b>⚠️ 이 문서에 새 확률 개념은 없다.</b>
+  등장하는 모든 척도가 <b>조건부 확률 하나</b>다.
+  달라지는 것은 <b>무엇을 조건으로 거느냐</b> 뿐이다.
+  Topic 2 의 핵심 문장 — <b>"방향을 바꾸면 다른 값이 된다"</b> — 이 그대로 반복된다.
+</div>
+
+<h2>1. 게으른 모델이 좋은 검사를 이긴다</h2>
+
+<p>
+  슬라이드 6~7번의 상황을 다시 가져온다. 유병률 <b>0.1%</b>,
+  민감도 <b>99%</b>, 특이도 <b>99%</b>. 10만 명을 검사하면 이렇게 된다.
+</p>
+
+<p>
+  이 검사의 <b>정확도(accuracy)</b> 를 재 보자. 맞힌 사람 수를 전체로 나누면 된다.
+</p>
+
+<div class="eq">
+  Accuracy = (99 + 98,901) / 100,000 = <b>0.9900</b> &nbsp;→&nbsp; 99.00%
+</div>
+
+<p>
+  훌륭해 보인다. 그런데 여기 <b>아무 일도 안 하는 프로그램</b>을 하나 만들어 보자.
+  검사 결과를 보지도 않고 <b>모두에게 "음성"이라고 답하는</b> 한 줄짜리 코드다.
+</p>
+
+<div class="eq" style="border-left-color:var(--orange)">
+  <code>def 진단(사람): return "음성"</code><br><br>
+  Accuracy = 99,900 / 100,000 = <b>0.9990</b> &nbsp;→&nbsp; <b>99.90%</b><br>
+  <span class="cmt">99% 짜리 검사보다 <b>0.9%p 더 정확하다.</b></span>
+</div>
+
+<div class="note">
+  <b>⚠️ 환자를 단 한 명도 못 찾는 프로그램이 정확도 1등이다.</b>
+  accuracy 는 <b>드문 것을 무시할수록 올라간다.</b>
+  희귀한 것을 찾는 문제에서 이 수는 <b>아무것도 말해 주지 않는다.</b>
+</div>
+
+<p>
+  이것을 <b>클래스 불균형(class imbalance)</b> 문제라고 한다.
+  스팸 탐지, 부정거래 탐지, 희귀질환 스크리닝, 불량품 검출 —
+  <b>중요한 쪽이 드문</b> 문제는 전부 여기에 해당한다.
+  그래서 척도를 <b>여러 개</b> 봐야 한다.
+</p>
+
+<h2>2. 혼동행렬 — 네 칸으로 나눠 본다</h2>
+
+<p>
+  accuracy 는 <b>맞힌 것</b>과 <b>틀린 것</b> 두 덩어리로만 나눈다.
+  그런데 틀리는 방식에는 <b>두 종류</b>가 있고, 그 둘의 대가가 전혀 다르다.
+  네 칸으로 나눈 표를 <b>혼동행렬(confusion matrix)</b> 이라고 한다.
+</p>
+
+<table class="cm">
+  <tr>
+    <th style="width:26px"></th><th style="width:26px"></th>
+    <th>실제 <b style="color:var(--ink)">환자</b></th>
+    <th>실제 <b style="color:var(--ink)">건강</b></th>
+  </tr>
+  <tr>
+    <th class="side" rowspan="2">검사 결과</th>
+    <th style="width:60px">양성</th>
+    <td><div class="cell tp"><span class="k">TP</span><span class="v">99</span><span class="d">제대로 찾아냄</span></div></td>
+    <td><div class="cell fp"><span class="k">FP</span><span class="v">999</span><span class="d">헛놀람 · 오탐</span></div></td>
+  </tr>
+  <tr>
+    <th>음성</th>
+    <td><div class="cell fn"><span class="k">FN</span><span class="v">1</span><span class="d">놓침</span></div></td>
+    <td><div class="cell tn"><span class="k">TN</span><span class="v">98,901</span><span class="d">제대로 넘김</span></div></td>
+  </tr>
+</table>
+
+<h3>이름 읽는 법 — 뒷글자가 예측, 앞글자가 맞았는지</h3>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">뒷글자 = 내가 뭐라고 했나</span>
+    <b>P</b>ositive → "양성이다"라고 말했다<br>
+    <b>N</b>egative → "음성이다"라고 말했다
+  </div>
+  <div class="card">
+    <span class="lbl">앞글자 = 그 말이 맞았나</span>
+    <b>T</b>rue → 맞았다<br>
+    <b>F</b>alse → 틀렸다
+  </div>
+</div>
+
+<p>
+  그래서 <b>FP</b> 는 "양성이라고 했는데 틀렸다" = <b>건강한 사람을 환자라고 했다.</b>
+  <b>FN</b> 은 "음성이라고 했는데 틀렸다" = <b>환자를 놓쳤다.</b>
+</p>
+
+<div class="link">
+  <b>Topic 14 에서 이 두 칸을 다시 만난다.</b>
+  가설검정에서 <b>FP 는 제1종 오류(Type I error, α)</b>,
+  <b>FN 은 제2종 오류(Type II error, β)</b> 라는 이름을 얻는다.
+  아래에서 볼 <b>Recall 은 검정력(power) = 1 − β</b> 와 같은 값이다.
+  <b>지금 세는 네 칸이 Topic 14 의 뼈대다.</b>
+</div>
+
+<h2>3. 네 칸에서 나오는 척도들 — 전부 조건부 확률이다</h2>
+
+<p>
+  중요한 것은 공식이 아니라 <b>무엇으로 나누느냐</b> 다.
+  <b>나누는 수(분모)가 곧 조건</b>이다.
+</p>
+
+<table>
+  <tr>
+    <th style="width:150px">이름</th><th style="width:130px">계산</th>
+    <th style="width:190px">조건부 확률로 쓰면</th><th>무엇을 묻는 말인가</th>
+  </tr>
+  <tr>
+    <td><b>Recall</b><br><span class="cmt" style="font-size:13px">= 민감도 · TPR</span></td>
+    <td class="num">TP / (TP+FN)<br>99 / 100</td>
+    <td>ℙ[양성 | <b>환자</b>]</td>
+    <td><b>환자를 몇 %나 찾아냈나</b><br>놓친 환자가 얼마나 되나</td>
+  </tr>
+  <tr>
+    <td><b>Precision</b><br><span class="cmt" style="font-size:13px">= PPV</span></td>
+    <td class="num">TP / (TP+FP)<br>99 / 1,098</td>
+    <td>ℙ[환자 | <b>양성</b>]</td>
+    <td><b>양성이라 한 것 중 몇 %가 진짜였나</b><br>헛놀람이 얼마나 되나</td>
+  </tr>
+  <tr>
+    <td><b>Specificity</b><br><span class="cmt" style="font-size:13px">= TNR</span></td>
+    <td class="num">TN / (TN+FP)<br>98,901 / 99,900</td>
+    <td>ℙ[음성 | <b>건강</b>]</td>
+    <td>건강한 사람을 몇 %나 제대로 넘겼나</td>
+  </tr>
+  <tr>
+    <td><b>NPV</b></td>
+    <td class="num">TN / (TN+FN)<br>98,901 / 98,902</td>
+    <td>ℙ[건강 | <b>음성</b>]</td>
+    <td>음성이라 한 것 중 몇 %가 진짜 건강한가</td>
+  </tr>
+  <tr>
+    <td><b>Accuracy</b></td>
+    <td class="num">(TP+TN) / 전체</td>
+    <td>ℙ[맞힘]</td>
+    <td>조건이 없다 — 그래서 <b>드문 쪽이 묻힌다</b></td>
+  </tr>
+</table>
+
+<div class="eq" style="border-left-color:var(--pink)">
+  <b>⭐ 오늘의 두 방향이 여기 그대로 있다</b><br><br>
+  <b>Recall</b> = ℙ[양성 | 환자] = <b>0.99</b> &nbsp;— 검사 성능. <b>제조사가 광고하는 수</b><br>
+  <b>Precision</b> = ℙ[환자 | 양성] = <b>0.09</b> &nbsp;— 내 걱정. <b>내가 알고 싶은 수</b><br>
+  <span class="cmt">같은 검사인데 <b>0.99 와 0.09</b>. 슬라이드 11번의 "방향을 바꾸면 다른 값이 된다"가 바로 이것이다.</span>
+</div>
+
+<p>
+  이 둘을 잇는 것이 <b>Bayes 정리</b>다. Precision 을 Bayes 로 풀어 쓰면 이렇게 된다.
+</p>
+
+<div class="eq">
+  Precision = <span style="white-space:nowrap">Recall × 유병률</span> &nbsp;/&nbsp;
+  ( <span style="white-space:nowrap">Recall × 유병률</span> +
+    <span style="white-space:nowrap">(1−Specificity) × (1−유병률)</span> )<br>
+  <span class="cmt">= 0.99×0.001 / (0.99×0.001 + 0.01×0.999) = 0.00099 / 0.01098 = <b>0.0902</b></span>
+</div>
+
+<p>
+  <b>Recall 과 Specificity 는 검사만 보면 정해지는데,</b>
+  <b>Precision 은 유병률까지 알아야 정해진다.</b>
+  검사 성능이 그대로여도 <b>어디에 쓰느냐에 따라 값이 통째로 달라진다</b>는 뜻이다.
+  아래 시연에서 유병률만 움직여 보면 바로 보인다.
+</p>
+
+<div class="viz">
+<h3>🔬 시연 ① — 세 숫자를 움직이면 척도가 어떻게 변하나</h3>
+<p style="font-size:14.5px; margin-top:0">
+  슬라이드 6번의 <b>세 숫자</b>를 그대로 슬라이더로 만들었다.
+  10만 명을 검사했을 때의 혼동행렬과 척도가 실시간으로 바뀐다.
+</p>
+
+<div class="sliders">
+  <div class="sl">
+    <label>유병률 <span class="val" id="m-vp">0.1%</span></label>
+    <input type="range" id="m-prev" min="1" max="1000" value="10">
+    <div class="cap">10만 명 중 환자 수</div>
+  </div>
+  <div class="sl">
+    <label>민감도 <span class="val" id="m-vs">99.0%</span></label>
+    <input type="range" id="m-sens" min="500" max="1000" value="990">
+    <div class="cap">환자를 양성으로 잡아내는 비율</div>
+  </div>
+  <div class="sl">
+    <label>특이도 <span class="val" id="m-vc">99.0%</span></label>
+    <input type="range" id="m-spec" min="500" max="1000" value="990">
+    <div class="cap">건강한 사람을 음성으로 넘기는 비율</div>
+  </div>
+</div>
+
+<div class="ctl">
+  <button class="primary" id="m-p1">슬라이드 6번 그대로</button>
+  <button id="m-p2">유병률 10배 (1%)</button>
+  <button id="m-p3">특이도만 99.9%로</button>
+  <button id="m-p4">코로나 대유행기 (10%)</button>
+</div>
+
+<table class="cm">
+  <tr>
+    <th style="width:26px"></th><th style="width:26px"></th>
+    <th>실제 환자</th><th>실제 건강</th>
+  </tr>
+  <tr>
+    <th class="side" rowspan="2">검사</th><th style="width:60px">양성</th>
+    <td><div class="cell tp"><span class="k">TP</span><span class="v" id="m-tp">99</span><span class="d">제대로 찾아냄</span></div></td>
+    <td><div class="cell fp"><span class="k">FP</span><span class="v" id="m-fp">999</span><span class="d">헛놀람</span></div></td>
+  </tr>
+  <tr>
+    <th>음성</th>
+    <td><div class="cell fn"><span class="k">FN</span><span class="v" id="m-fn">1</span><span class="d">놓침</span></div></td>
+    <td><div class="cell tn"><span class="k">TN</span><span class="v" id="m-tn">98,901</span><span class="d">제대로 넘김</span></div></td>
+  </tr>
+</table>
+
+<div class="tiles">
+  <div class="tile"><div class="t">ACCURACY</div><div class="n" id="m-acc">0.990</div><div class="f">(TP+TN)/전체</div></div>
+  <div class="tile hi"><div class="t">PRECISION (PPV)</div><div class="n" id="m-pre">0.090</div><div class="f">TP/(TP+FP)</div></div>
+  <div class="tile hi"><div class="t">RECALL</div><div class="n" id="m-rec">0.990</div><div class="f">TP/(TP+FN)</div></div>
+  <div class="tile hi"><div class="t">F1</div><div class="n" id="m-f1">0.165</div><div class="f">조화평균</div></div>
+</div>
+<div class="tiles" style="margin-top:10px">
+  <div class="tile"><div class="t">SPECIFICITY</div><div class="n" id="m-spc">0.990</div><div class="f">TN/(TN+FP)</div></div>
+  <div class="tile"><div class="t">NPV</div><div class="n" id="m-npv">1.000</div><div class="f">TN/(TN+FN)</div></div>
+  <div class="tile"><div class="t">"전부 음성" 모델</div><div class="n" id="m-lazy">0.999</div><div class="f">그것의 accuracy</div></div>
+  <div class="tile"><div class="t">양성 1명당</div><div class="n" id="m-per">11.1</div><div class="f">명이 양성 판정</div></div>
+</div>
+<p id="m-msg" style="font-size:14px; margin:14px 0 0; padding:10px 14px; border-radius:7px;
+   background:var(--warn); color:#b45309"></p>
+</div>
+
+<p>
+  <b>확인할 것 세 가지</b>
+</p>
+
+<ul>
+  <li><b>유병률만 10배(1%)로</b> 올려 보라. 검사는 하나도 안 바뀌었는데
+      Precision 이 <b>0.090 → 0.500</b> 으로 뛴다.
+      <b>같은 검사가 어디에 쓰이냐에 따라 쓸모가 달라진다.</b></li>
+  <li><b>특이도만 99.9%로</b> 올려 보라. 0.9%p 올렸을 뿐인데
+      Precision 이 <b>0.090 → 약 0.50</b> 으로 올라간다.
+      드문 병을 찾을 때는 <b>민감도보다 특이도가 훨씬 중요하다.</b></li>
+  <li>어느 경우든 <b>Accuracy 는 거의 안 움직인다.</b> 그게 문제다 —
+      <b>중요한 변화를 못 잡아낸다.</b></li>
+</ul>
+
+<h2>4. Precision 과 Recall 은 서로 싸운다</h2>
+
+<p>
+  실제 분류기는 "양성/음성"을 바로 내놓지 않는다.
+  <b>0 과 1 사이의 점수</b>를 내놓고, 우리가 <b>임계값(threshold)</b> 을 정해 자른다.
+  <b>이 선을 어디에 긋느냐가 Precision 과 Recall 을 정한다.</b>
+</p>
+
+<div class="cards c2">
+  <div class="card no">
+    <span class="lbl">선을 낮추면</span>
+    <b>의심스러우면 다 양성</b><br>
+    환자를 거의 안 놓친다 → <b>Recall ↑</b><br>
+    대신 헛놀람이 쏟아진다 → <b>Precision ↓</b>
+  </div>
+  <div class="card ok">
+    <span class="lbl">선을 높이면</span>
+    <b>확실할 때만 양성</b><br>
+    양성이라 하면 대체로 맞는다 → <b>Precision ↑</b><br>
+    대신 환자를 놓친다 → <b>Recall ↓</b>
+  </div>
+</div>
+
+<p>
+  <b>둘을 동시에 올릴 수는 없다.</b> 하나를 얻으면 하나를 내준다.
+  그래서 <b>"이 모델의 성능은 얼마인가"</b> 라는 질문에는 답이 하나로 나오지 않는다.
+  <b>어디에 선을 그었는지</b>를 같이 말해야 한다.
+</p>
+
+<div class="viz">
+<h3>🔬 시연 ② — 임계값을 움직여 본다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  스팸 필터가 메일 <b>1,000통</b>에 점수를 매겼다고 하자
+  (스팸 200통 · 정상 800통). 점수가 높을수록 스팸에 가깝다.
+  <b>세로선을 움직여</b> 어디서 자를지 정해 보라.
+</p>
+
+<div class="sl" style="margin-bottom:8px">
+  <label>임계값 <span class="val" id="t-vt">0.50</span></label>
+  <input type="range" id="t-thr" min="2" max="98" value="50">
+</div>
+
+<canvas id="t-cv" width="900" height="230"></canvas>
+<div class="legend">
+  <span><i style="background:var(--fn)"></i>실제 스팸 200통</span>
+  <span><i style="background:var(--tn)"></i>실제 정상 800통</span>
+  <span><i style="background:var(--ink)"></i>임계값 — 오른쪽을 "스팸"이라 판정</span>
+</div>
+
+<div class="tiles" style="margin-top:16px">
+  <div class="tile hi"><div class="t">PRECISION</div><div class="n" id="t-pre">—</div><div class="f">스팸이라 한 것 중 진짜</div></div>
+  <div class="tile hi"><div class="t">RECALL</div><div class="n" id="t-rec">—</div><div class="f">스팸 중 잡아낸 비율</div></div>
+  <div class="tile hi"><div class="t">F1</div><div class="n" id="t-f1">—</div><div class="f">둘의 조화평균</div></div>
+  <div class="tile"><div class="t">놓친 스팸 / 오분류된 정상</div><div class="n" id="t-err">—</div><div class="f">FN / FP</div></div>
+</div>
+<p id="t-msg" style="font-size:14px; margin:14px 0 0; padding:10px 14px; border-radius:7px;
+   background:var(--soft); color:var(--ink)"></p>
+</div>
+
+<h2>5. F1 — 왜 그냥 평균을 안 쓰나</h2>
+
+<p>
+  Precision 과 Recall 두 개를 계속 들고 다니기 번거로우니 <b>하나로 합치고 싶다.</b>
+  그런데 <b>보통의 평균(산술평균)을 쓰면 안 된다.</b> 이유를 숫자로 본다.
+</p>
+
+<p>
+  스팸 메일 1,000통 중 <b>딱 1통</b>만 스팸이라고 판정하는 극단적으로 소심한 필터를 생각하자.
+  그 1통이 진짜 스팸이면 Precision 은 <b>1.000</b> — 완벽하다.
+  하지만 스팸 1,000통 중 1통만 잡았으니 Recall 은 <b>0.001</b> 이다.
+</p>
+
+<div class="eq">
+  산술평균 = (1.000 + 0.001) / 2 = <b>0.5005</b> &nbsp;
+  <span class="cmt">← 쓸모없는 필터가 "절반은 한다"는 점수를 받는다</span><br><br>
+  조화평균 (F1) = 2 × (1.000 × 0.001) / (1.000 + 0.001) = <b>0.0020</b> &nbsp;
+  <span class="cmt">← <b>정직하다</b></span>
+</div>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>F1</b> = 2 · Precision · Recall / (Precision + Recall)
+</div>
+
+<p>
+  <b>조화평균은 작은 쪽에 끌려간다.</b>
+  둘 중 하나라도 0 에 가까우면 F1 도 0 에 가까워진다.
+  <b>"둘 다 어느 정도는 해야 점수를 준다"</b> 는 뜻이다.
+  산술평균처럼 <b>한쪽을 극단으로 밀어 점수를 따는 편법</b>이 통하지 않는다.
+</p>
+
+<table>
+  <tr><th class="num">Precision</th><th class="num">Recall</th><th class="num">산술평균</th><th class="num">F1 (조화평균)</th><th>읽기</th></tr>
+  <tr><td class="num">0.500</td><td class="num">0.500</td><td class="num">0.500</td><td class="num">0.500</td><td>균형 잡히면 둘이 같다</td></tr>
+  <tr><td class="num">0.900</td><td class="num">0.100</td><td class="num">0.500</td><td class="num"><b>0.180</b></td><td>한쪽으로 치우치면 F1 이 확 떨어진다</td></tr>
+  <tr><td class="num">1.000</td><td class="num">0.001</td><td class="num">0.501</td><td class="num"><b>0.002</b></td><td>극단은 거의 0 점</td></tr>
+  <tr><td class="num">0.090</td><td class="num">0.990</td><td class="num">0.540</td><td class="num"><b>0.165</b></td><td>슬라이드 7번의 검사 — <b>F1 이 실상을 말한다</b></td></tr>
+</table>
+
+<p>
+  마지막 줄을 보라. 그 검사의 <b>Accuracy 는 0.990</b> 인데 <b>F1 은 0.165</b> 다.
+  같은 검사에 대한 두 점수의 차이가 <b>이 문서 전체의 요점</b>이다.
+</p>
+
+<div class="note">
+  <b>⚠️ F1 도 만능은 아니다.</b> F1 은 <b>TN 을 아예 쓰지 않는다.</b>
+  네 칸 중 세 칸(TP·FP·FN)만 본다. "제대로 넘긴 건강한 사람"이 몇 명이든 F1 은 안 바뀐다.
+  <b>드문 쪽을 찾는 문제에서는 그게 장점</b>이지만,
+  두 부류가 비슷하게 많은 문제에서는 오히려 정보를 버리는 셈이다.
+</div>
+
+<h3>한쪽을 더 무겁게 — F<sub>β</sub></h3>
+
+<p>
+  놓치는 것이 훨씬 위험한 상황(암 검진)에서는 <b>Recall 에 가중치를 준다.</b>
+</p>
+
+<div class="eq">
+  F<sub>β</sub> = (1+β²) · P · R / (β²·P + R)<br>
+  <span class="cmt">
+    β = 1 → F1 (똑같이 중요) &nbsp;·&nbsp;
+    β = 2 → <b>Recall 을 2배 무겁게</b> (놓치면 큰일) &nbsp;·&nbsp;
+    β = 0.5 → <b>Precision 을 2배 무겁게</b> (헛놀람이 비쌀 때)
+  </span><br><br>
+  위 검사(P=0.090, R=0.990) 에 적용하면 —
+  F<sub>0.5</sub> = <b>0.110</b> &nbsp;·&nbsp; F<sub>1</sub> = <b>0.165</b> &nbsp;·&nbsp; F<sub>2</sub> = <b>0.330</b>
+</div>
+
+<h2>6. 그래서 무엇을 봐야 하나</h2>
+
+<p>
+  정답은 <b>"상황에 따라 다르다"</b> 이고, 그 상황을 정하는 것은 통계가 아니라
+  <b>틀렸을 때 누가 무엇을 잃는가</b> 다.
+</p>
+
+<table>
+  <tr><th style="width:170px">상황</th><th style="width:230px">더 아픈 실수</th><th>주로 보는 척도</th></tr>
+  <tr>
+    <td><b>스팸 필터</b></td>
+    <td><b>FP</b> — 중요한 메일이 스팸함으로 간다.
+        면접 결과 메일을 놓치면 스팸 몇 통 받는 것과 비교가 안 된다.</td>
+    <td><b>Precision 우선.</b> 확실할 때만 스팸으로. F<sub>0.5</sub></td>
+  </tr>
+  <tr>
+    <td><b>암 1차 검진</b></td>
+    <td><b>FN</b> — 환자를 놓친다. 헛놀람은 재검사로 풀리지만
+        놓친 암은 되돌릴 수 없다.</td>
+    <td><b>Recall 우선.</b> 의심되면 다 양성. F<sub>2</sub></td>
+  </tr>
+  <tr>
+    <td><b>부정거래 탐지</b></td>
+    <td><b>둘 다.</b> 놓치면 손해, 막으면 정상 고객이 불편하다.</td>
+    <td><b>F1</b> · 비용을 금액으로 환산해 비교</td>
+  </tr>
+  <tr>
+    <td><b>두 부류가 비슷하게 많을 때</b></td>
+    <td>특별히 한쪽이 아프지 않다.</td>
+    <td><b>Accuracy 로 충분하다.</b> 불균형이 없으면 함정도 없다</td>
+  </tr>
+</table>
+
+<div class="link">
+  <b>⭐ 실무의 순서는 이렇다.</b>
+  ① 두 종류의 실수 중 <b>어느 쪽이 더 비싼지 먼저 정한다</b> →
+  ② 그에 맞는 척도를 고른다 → ③ <b>임계값을 그 척도가 좋아지도록 조정한다.</b>
+  <b>모델을 바꾸기 전에 임계값부터 본다.</b>
+  시연 ② 에서 봤듯 <b>같은 모델도 선을 어디에 긋느냐로 성능이 완전히 달라진다.</b>
+</div>
+
+<h2>7. 한 장으로 정리</h2>
+
+<div class="cards c2">
+  <div class="card no">
+    <span class="lbl">하지 말 것</span>
+    <ul style="margin:8px 0 0; padding-left:18px">
+      <li><b>Accuracy 하나만</b> 보고 판단하기</li>
+      <li>드문 것을 찾는 문제에 <b>Accuracy 쓰기</b></li>
+      <li>Precision 과 Recall 을 <b>산술평균</b>하기</li>
+      <li>임계값을 안 밝히고 <b>"성능 90%"</b> 라고 말하기</li>
+    </ul>
+  </div>
+  <div class="card ok">
+    <span class="lbl">할 것</span>
+    <ul style="margin:8px 0 0; padding-left:18px">
+      <li><b>혼동행렬 네 칸</b>을 먼저 본다</li>
+      <li><b>더 비싼 실수</b>가 무엇인지 정한다</li>
+      <li>Precision · Recall · F1 을 <b>같이</b> 본다</li>
+      <li>Precision 은 <b>유병률이 바뀌면 같이 바뀐다</b>는 것을 기억한다</li>
+    </ul>
+  </div>
+</div>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — 모든 성능 척도는 <b>조건부 확률</b>이고,
+  <b>무엇을 분모로 두느냐</b>가 척도의 이름을 정한다.
+  <b>Recall 은 ℙ[양성 | 환자], Precision 은 ℙ[환자 | 양성].</b>
+  Topic 2 가 내내 말한 <b>"방향이 다르면 값도 다르다"</b> 가
+  기계학습 평가의 첫 페이지에 그대로 적혀 있다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 2 슬라이드 7·30번 보충 &nbsp;·&nbsp;
+  Topic 14(가설검정)에서 FP·FN 을 제1종·제2종 오류로 다시 만난다 &nbsp;·&nbsp;
+  시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+/* ══════════ 시연 ① — 유병률 · 민감도 · 특이도 → 혼동행렬 ══════════ */
+(function(){
+  const $ = id => document.getElementById(id);
+  const N = 100000;
+  const cm = x => x.toLocaleString("en-US");
+  const f3 = x => Number.isFinite(x) ? x.toFixed(3) : "—";
+
+  const elPrev = $("m-prev"), elSens = $("m-sens"), elSpec = $("m-spec");
+
+  function draw(){
+    const prev = +elPrev.value / 10000;      // 1~1000 → 0.01% ~ 10%
+    const sens = +elSens.value / 1000;       // 0.500 ~ 1.000
+    const spec = +elSpec.value / 1000;
+
+    $("m-vp").textContent = (prev*100).toFixed(prev < 0.01 ? 2 : 1) + "%";
+    $("m-vs").textContent = (sens*100).toFixed(1) + "%";
+    $("m-vc").textContent = (spec*100).toFixed(1) + "%";
+
+    // 사람 수는 정수여야 한다 — 반올림한 뒤 나머지를 짝에게 넘긴다
+    const sick = Math.round(N * prev), well = N - sick;
+    const TP = Math.round(sick * sens), FN = sick - TP;
+    const TN = Math.round(well * spec), FP = well - TN;
+
+    $("m-tp").textContent = cm(TP); $("m-fn").textContent = cm(FN);
+    $("m-fp").textContent = cm(FP); $("m-tn").textContent = cm(TN);
+
+    const acc = (TP + TN) / N;
+    const pre = (TP + FP) ? TP / (TP + FP) : NaN;
+    const rec = (TP + FN) ? TP / (TP + FN) : NaN;
+    const spc = (TN + FP) ? TN / (TN + FP) : NaN;
+    const npv = (TN + FN) ? TN / (TN + FN) : NaN;
+    const f1  = (pre + rec) ? 2 * pre * rec / (pre + rec) : NaN;
+
+    $("m-acc").textContent = f3(acc);
+    $("m-pre").textContent = f3(pre);
+    $("m-rec").textContent = f3(rec);
+    $("m-f1").textContent  = f3(f1);
+    $("m-spc").textContent = f3(spc);
+    $("m-npv").textContent = f3(npv);
+    $("m-lazy").textContent = f3(well / N);
+    $("m-per").textContent = TP ? ((TP + FP) / TP).toFixed(1) : "—";
+
+    // 나쁜 값에 색을 준다 — 눈이 먼저 알아채게
+    $("m-pre").parentElement.classList.toggle("bad", pre < 0.5);
+    $("m-f1").parentElement.classList.toggle("bad", f1 < 0.5);
+
+    // 상황 해설
+    let msg, bg = "var(--warn)", fg = "#b45309";
+    if (!Number.isFinite(pre)){
+      msg = "양성 판정이 한 명도 없다. Precision 은 정의되지 않는다 (0/0).";
+    } else if (well / N > acc){
+      msg = "⚠️ <b>\"전부 음성\"이라 답하는 프로그램의 accuracy(" + f3(well/N)
+          + ")가 이 검사(" + f3(acc) + ")보다 높다.</b> "
+          + "accuracy 로는 이 검사의 가치를 잴 수 없다.";
+    } else if (pre < 0.3){
+      msg = "양성 판정을 받은 " + cm(TP+FP) + "명 중 진짜 환자는 " + cm(TP)
+          + "명뿐이다. <b>" + ((TP+FP)/TP).toFixed(1) + "명이 놀라야 1명을 찾는다.</b>";
+    } else if (pre >= 0.8 && rec >= 0.8){
+      msg = "✅ Precision·Recall 이 둘 다 높다. <b>이런 조건에서는 검사 결과를 그대로 믿어도 된다.</b>";
+      bg = "#e6f6f3"; fg = "#0f766e";
+    } else {
+      msg = "양성 판정 " + cm(TP+FP) + "명 중 진짜 환자 " + cm(TP) + "명 → Precision "
+          + f3(pre) + ". 놓친 환자는 " + cm(FN) + "명이다.";
+      bg = "var(--soft)"; fg = "var(--ink)";
+    }
+    const box = $("m-msg");
+    box.innerHTML = msg; box.style.background = bg; box.style.color = fg;
+  }
+
+  [elPrev, elSens, elSpec].forEach(e => e.addEventListener("input", draw));
+
+  const preset = (p, s, c) => () => {
+    elPrev.value = p; elSens.value = s; elSpec.value = c; draw();
+  };
+  $("m-p1").onclick = preset(10, 990, 990);     // 슬라이드 6번 — 0.1% / 99% / 99%
+  $("m-p2").onclick = preset(100, 990, 990);    // 유병률 10배 → Precision 0.500
+  $("m-p3").onclick = preset(10, 990, 999);     // 특이도만 99.9%
+  $("m-p4").onclick = preset(1000, 990, 990);   // 유병률 10% — 흔한 병
+  draw();
+})();
+</script>
+
+<script>
+/* ══════════ 시연 ② — 임계값을 움직이면 Precision·Recall 이 반대로 움직인다 ══════════ */
+(function(){
+  const $  = id => document.getElementById(id);
+  const cv = $("t-cv"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+
+  const N_SPAM = 200, N_HAM = 800;
+
+  /* 점수를 고정 난수로 만든다 — 다시 열어도 같은 그림이 나와야 설명이 성립한다.
+     정규분포는 Box-Muller. 스팸은 0.68 근처, 정상은 0.30 근처에 몰리되 서로 겹친다. */
+  /* ⚠️ JS 의 곱셈은 2^53 을 넘으면 정밀도를 잃는다. 흔한 LCG 상수(1103515245)를
+     그대로 쓰면 seed*상수 가 2e18 이 되어 수열이 망가진다.
+     MINSTD(16807)는 2^31 × 16807 ≈ 3.6e13 이라 안전하다. */
+  let seed = 20260302 % 2147483647;         // 개강일 — 전 Topic 공통 시드
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const gauss = (mu, sd) => {
+    const u = Math.max(rnd(), 1e-9), v = rnd();
+    return mu + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  };
+  const clamp01 = x => Math.min(0.999, Math.max(0.001, x));
+
+  const spam = Array.from({length: N_SPAM}, () => clamp01(gauss(0.68, 0.16)));
+  const ham  = Array.from({length: N_HAM },  () => clamp01(gauss(0.30, 0.16)));
+
+  const BINS = 50;
+  const hist = arr => {
+    const h = new Array(BINS).fill(0);
+    arr.forEach(x => h[Math.min(BINS - 1, Math.floor(x * BINS))]++);
+    return h;
+  };
+  const hS = hist(spam), hH = hist(ham);
+  const peak = Math.max(...hS, ...hH);
+
+  const PAD_L = 46, PAD_R = 14, PAD_T = 12, PAD_B = 32;
+  const px = x => PAD_L + x * (W - PAD_L - PAD_R);
+  const py = c => (H - PAD_B) - (c / peak) * (H - PAD_T - PAD_B);
+
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  function draw(){
+    const thr = +$("t-thr").value / 100;
+    $("t-vt").textContent = thr.toFixed(2);
+
+    ctx.clearRect(0, 0, W, H);
+
+    // 축
+    ctx.strokeStyle = css("--line"); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD_L, H - PAD_B); ctx.lineTo(W - PAD_R, H - PAD_B); ctx.stroke();
+    ctx.fillStyle = css("--muted"); ctx.font = "12px Consolas, monospace";
+    ctx.textAlign = "center";
+    for (let t = 0; t <= 1.0001; t += 0.25)
+      ctx.fillText(t.toFixed(2), px(t), H - PAD_B + 18);
+    ctx.textAlign = "left";
+    ctx.fillText("모델이 매긴 점수 →", PAD_L, PAD_T + 2);
+
+    // 막대 — 판정 쪽에 따라 진하게
+    const bw = (W - PAD_L - PAD_R) / BINS;
+    // 진하면 제대로 분류된 것, 흐리면 틀린 것 (FP·FN)
+    const bar = (h, color, dx, isSpam) => {
+      for (let i = 0; i < BINS; i++){
+        if (!h[i]) continue;
+        const predSpam = (i + 0.5) / BINS >= thr;
+        ctx.globalAlpha = (predSpam === isSpam) ? 0.95 : 0.28;
+        ctx.fillStyle = color;
+        ctx.fillRect(px(i / BINS) + dx, py(h[i]), bw / 2 - 1, (H - PAD_B) - py(h[i]));
+      }
+      ctx.globalAlpha = 1;
+    };
+    bar(hH, css("--tn"), 0,      false);   // 정상 — 왼쪽 절반
+    bar(hS, css("--fn"), bw / 2, true);    // 스팸 — 오른쪽 절반
+
+    // 임계선
+    ctx.strokeStyle = css("--ink"); ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(px(thr), PAD_T - 6); ctx.lineTo(px(thr), H - PAD_B); ctx.stroke();
+    ctx.fillStyle = css("--ink"); ctx.font = "bold 12px Consolas, monospace";
+    ctx.textAlign = px(thr) > W - 90 ? "right" : "left";
+    ctx.fillText(" ← 정상 | 스팸 → ", px(thr), PAD_T + 20);
+
+    // 네 칸
+    const TP = spam.filter(x => x >= thr).length;
+    const FN = N_SPAM - TP;
+    const FP = ham.filter(x => x >= thr).length;
+    const TN = N_HAM - FP;
+
+    const pre = (TP + FP) ? TP / (TP + FP) : NaN;
+    const rec = TP / N_SPAM;
+    const f1  = (pre + rec) ? 2 * pre * rec / (pre + rec) : NaN;
+    const f3  = x => Number.isFinite(x) ? x.toFixed(3) : "—";
+
+    $("t-pre").textContent = f3(pre);
+    $("t-rec").textContent = f3(rec);
+    $("t-f1").textContent  = f3(f1);
+    $("t-err").textContent = FN + " / " + FP;
+
+    let msg;
+    if (thr <= 0.12){
+      msg = "<b>선을 아주 낮게 그었다.</b> 스팸은 거의 다 잡았지만("
+          + "Recall " + f3(rec) + ") 정상 메일 <b>" + FP + "통</b>이 스팸함으로 갔다. "
+          + "면접 결과 메일이 저 안에 있을 수 있다.";
+    } else if (thr >= 0.88){
+      msg = "<b>선을 아주 높게 그었다.</b> 스팸이라 한 것은 거의 다 맞지만("
+          + "Precision " + f3(pre) + ") 스팸 <b>" + FN + "통</b>을 놓쳤다. "
+          + "필터가 있으나 마나다.";
+    } else {
+      msg = "스팸이라 판정 " + (TP + FP) + "통 중 진짜 " + TP + "통 → Precision " + f3(pre)
+          + " &nbsp;·&nbsp; 스팸 200통 중 " + TP + "통 검출 → Recall " + f3(rec)
+          + " &nbsp;·&nbsp; <b>선을 옮기면 두 값이 반대로 움직인다.</b>";
+    }
+    $("t-msg").innerHTML = msg;
+  }
+
+  $("t-thr").addEventListener("input", draw);
+  draw();
+})();
+</script>
+</body>
+</html>

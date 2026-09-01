@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Naive Bayes 분류기 — 틀린 가정 하나로 만드는 스팸 필터</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cmt{color:var(--muted); font-size:14px}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  .card.ok .lbl{color:var(--teal); background:#e6f6f3}
+  .card.no .lbl{color:var(--orange); background:#fdf1e3}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  tr.spam td:first-child{color:var(--pink); font-weight:700}
+  tr.ham  td:first-child{color:var(--teal); font-weight:700}
+  ul{padding-left:22px} li{margin:6px 0}
+
+  /* 시연 틀 */
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .ctl{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+  button{font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--body);
+    border-radius:7px; padding:8px 13px; transition:all .12s}
+  button:hover{border-color:var(--accent); color:var(--accent)}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  button.primary:hover{filter:brightness(1.08); color:#fff}
+  .hint{font-size:13px; color:var(--muted); margin-left:auto}
+
+  /* 단어 칩 */
+  .cloud{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px}
+  .w{font-family:Consolas,monospace; font-size:13px; border:1px solid var(--line);
+     background:#fff; border-radius:14px; padding:4px 11px; cursor:pointer; transition:all .12s;
+     color:var(--body)}
+  .w:hover{border-color:var(--accent)}
+  .w.on{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700}
+  .w .sc{font-size:10.5px; opacity:.6; margin-left:5px}
+
+  /* 계산 패널 */
+  .calc{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:6px}
+  .side{border:1px solid var(--line); border-radius:9px; padding:14px 16px; background:var(--soft)}
+  .side.s{border-top:3px solid var(--pink)}
+  .side.h{border-top:3px solid var(--teal)}
+  .side h4{margin:0 0 10px; font-size:14px; color:var(--ink)}
+  .rowline{display:flex; justify-content:space-between; font-family:Consolas,monospace;
+           font-size:13px; padding:2px 0; border-bottom:1px dotted var(--line)}
+  .rowline.tot{border-bottom:none; border-top:1.5px solid var(--line); margin-top:6px;
+               padding-top:6px; font-weight:700; color:var(--ink)}
+  .rowline .z{color:var(--orange); font-weight:700}
+  .bar{height:34px; border-radius:7px; overflow:hidden; display:flex; margin:16px 0 6px;
+       border:1px solid var(--line); background:var(--soft)}
+  .bar .sp{background:var(--pink); transition:width .3s}
+  .bar .hm{background:var(--teal); transition:width .3s}
+  .barlbl{display:flex; justify-content:space-between; font-size:13.5px; color:var(--ink)}
+  .barlbl .l{color:var(--pink); font-weight:700}
+  .barlbl .r{color:var(--teal); font-weight:700}
+  .verdict{text-align:center; font-size:17px; font-weight:800; margin:14px 0 0; color:var(--ink)}
+  .verdict .tagv{border-radius:6px; padding:3px 12px; color:#fff; margin-left:6px}
+  .verdict .tagv.s{background:var(--pink)}
+  .verdict .tagv.h{background:var(--teal)}
+  .verdict .tagv.x{background:var(--muted)}
+  .sw{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--body)}
+  .sw input{width:16px; height:16px; accent-color:var(--accent)}
+
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .calc{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Naive Bayes 분류기</h1>
+<p class="sub">
+  확률통계 · Topic 2 보충자료 — 슬라이드 <b>29번 (Lab 2)</b> · <b>30번 (→AI 연결점)</b>
+</p>
+
+<p>
+  슬라이드에서 <b>"이 곱셈이 Naive Bayes 다"</b> 라고 한 줄로 지나갔다.
+  그 한 줄에는 사실 <b>질문 세 개</b>가 숨어 있다.
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">질문 1</span>
+    <b>왜 곱하는가?</b><br>
+    확률을 그냥 곱해도 되는 근거가 무엇인가.
+  </div>
+  <div class="card">
+    <span class="lbl">질문 2</span>
+    <b>왜 naive 한가?</b><br>
+    이름에 "순진한"이 붙은 이유가 있다.
+  </div>
+  <div class="card">
+    <span class="lbl">질문 3</span>
+    <b>틀렸는데 왜 쓰는가?</b><br>
+    가정이 현실과 어긋나는데도 잘 맞는다.
+  </div>
+</div>
+
+<p>
+  이 문서는 그 셋에 차례로 답한다. 새 확률 개념은 하나도 나오지 않는다.
+  <b>Topic 2 에서 배운 것</b> — 조건부 확률 · 곱셈법칙 · 전확률 법칙 · Bayes 정리 · 조건부 독립 —
+  <b>다섯 개를 이어 붙이면 그대로 분류기가 된다.</b>
+</p>
+
+<h2>1. 분류기가 하는 일 — 확률을 재서 큰 쪽을 고른다</h2>
+
+<p>
+  <b>분류기(classifier)</b> 는 입력을 보고 <b>부류(class)</b> 를 고르는 프로그램이다.
+  메일을 보고 <code>spam</code> 인지 <code>ham</code>(정상) 인지 고른다.
+  손글씨를 보고 0~9 중 하나를 고른다. 사진을 보고 개인지 고양이인지 고른다.
+</p>
+
+<p>
+  확률로 접근하면 할 일이 아주 단순해진다.
+  <b>각 부류일 확률을 재고, 가장 큰 것을 답으로 내놓는다.</b>
+</p>
+
+<div class="eq">
+  예측 = argmax<sub>C</sub> &nbsp; ℙ[<i>C</i> | 관측한 단어들]<br>
+  <span class="cmt">C 는 spam 또는 ham. 둘 중 확률이 큰 쪽을 고른다.</span>
+</div>
+
+<p>
+  문제는 저 확률을 <b>직접 잴 수 없다</b>는 것이다.
+  우리가 데이터에서 셀 수 있는 것은 반대 방향이다 —
+  <b>스팸 메일 중에 "free" 가 몇 통에 나왔나</b> 는 세면 된다.
+  아는 것과 알고 싶은 것이 반대다. Topic 2 의 출발점이 바로 이 상황이었다.
+</p>
+
+<h2>2. Bayes 로 방향을 뒤집는다</h2>
+
+<p>
+  슬라이드 16번의 Bayes 정리를 그대로 쓴다. 사건 이름만 갈아 끼우면 된다.
+</p>
+
+<div class="eq">
+  ℙ[spam | <i>w</i>] = ℙ[<i>w</i> | spam] · ℙ[spam] &nbsp;/&nbsp; ℙ[<i>w</i>]<br>
+  <span class="cmt">↑ 알고 싶은 것 &nbsp;&nbsp; ↑ 셀 수 있는 것 &nbsp;&nbsp; ↑ prior &nbsp;&nbsp; ↑ evidence</span>
+</div>
+
+<p>
+  여기서 <b>한 가지 요령</b>이 있다. 우리는 확률의 정확한 값이 아니라
+  <b>어느 쪽이 큰지</b>만 알면 된다. 그런데 분모 ℙ[<i>w</i>] 는
+  spam 을 따질 때나 ham 을 따질 때나 <b>똑같은 값</b>이다.
+  둘을 비교할 때 같은 수로 나누는 것은 순서를 바꾸지 못한다.
+</p>
+
+<div class="eq">
+  ℙ[spam | <i>w</i>] &nbsp;∝&nbsp; ℙ[<i>w</i> | spam] · ℙ[spam]<br>
+  ℙ[ham &nbsp;| <i>w</i>] &nbsp;∝&nbsp; ℙ[<i>w</i> | ham] &nbsp;· ℙ[ham]<br>
+  <span class="cmt">∝ 는 "비례한다"는 뜻. 분모를 떼고 <b>분자만</b> 비교해도 승부는 같다.</span>
+</div>
+
+<div class="note">
+  <b>⚠️ 분모를 떼면 값이 확률이 아니게 된다.</b>
+  두 분자를 각각 <b>score</b> 라고 부르자. 확률로 되돌리고 싶으면
+  마지막에 <b>둘의 합으로 나누면</b> 된다 —
+  그 합이 바로 <b>전확률 법칙</b>으로 구한 ℙ[<i>w</i>] 다 (슬라이드 13·14번).
+  아래 시연에서 이 두 단계가 눈에 보이게 나눠져 있다.
+</div>
+
+<h2>3. 벽 — 단어 두 개만 넘어가도 셀 수가 없다</h2>
+
+<p>
+  단어 하나면 위 식으로 끝난다. 그런데 메일에는 단어가 여러 개다.
+  <b>"free click"</b> 이라는 메일을 판정하려면 이런 것이 필요하다.
+</p>
+
+<div class="eq">
+  ℙ[free <b>그리고</b> click | spam] &nbsp; ← <b>두 단어가 같이 나온</b> 스팸이 몇 통인가
+</div>
+
+<p>
+  이걸 세려면 <b>"free 와 click 이 함께 들어 있는 메일"</b> 을 찾아야 한다.
+  단어가 두 개일 때는 그럭저럭 센다. 그런데 단어가 늘어나면 순식간에 무너진다.
+</p>
+
+<div class="cards c2">
+  <div class="card no">
+    <span class="lbl">단어 조합의 수</span>
+    아래 실습 데이터의 어휘는 <b>42개</b>다.
+    각 단어가 있거나 없거나 두 가지이므로 가능한 메일의 모양은
+    <b>2<sup>42</sup> ≈ 4조 4천억 가지</b>다.
+  </div>
+  <div class="card no">
+    <span class="lbl">가진 데이터</span>
+    <b>15통.</b><br>
+    4조 개의 칸에 15개의 점을 뿌린 셈이다.
+    거의 모든 조합의 관측 횟수가 <b>0</b>이다.
+  </div>
+</div>
+
+<p>
+  실제 스팸 필터의 어휘는 수만 개다. 조합의 수는 우주의 원자 수를 훌쩍 넘는다.
+  데이터를 아무리 모아도 <b>영원히 부족하다.</b>
+  세는 방법으로는 여기서 끝이다.
+</p>
+
+<h2>4. naive 가정 — 조건부 독립으로 벽을 넘는다</h2>
+
+<p>
+  슬라이드 26번에서 배운 <b>조건부 독립</b>을 여기에 쓴다.
+  "부류를 알고 나면 단어들끼리는 서로 독립"이라고 <b>가정해 버리는</b> 것이다.
+</p>
+
+<div class="eq">
+  ℙ[<i>w</i><sub>1</sub>, <i>w</i><sub>2</sub>, …, <i>w</i><sub>k</sub> | spam]
+  &nbsp;≈&nbsp;
+  ℙ[<i>w</i><sub>1</sub> | spam] × ℙ[<i>w</i><sub>2</sub> | spam] × … × ℙ[<i>w</i><sub>k</sub> | spam]<br>
+  <span class="cmt">등호(=)가 아니라 근사(≈)다. 이 자리가 "naive" 다.</span>
+</div>
+
+<p>
+  이 한 줄로 계산량이 완전히 달라진다.
+  <b>4조 개의 조합을 세던 일이, 단어 42개를 각각 세는 일로 줄었다.</b>
+</p>
+
+<div class="cards c2">
+  <div class="card no">
+    <span class="lbl">가정 없이</span>
+    조합마다 하나씩 — <b>2<sup>42</sup>개</b>의 확률을 데이터에서 추정해야 한다.
+    불가능하다.
+  </div>
+  <div class="card ok">
+    <span class="lbl">naive 가정 후</span>
+    단어마다 두 개씩 — <b>42 × 2 = 84개</b>만 세면 된다.
+    15통으로도 충분히 센다.
+  </div>
+</div>
+
+<div class="link">
+  <b>이 가정이 왜 "그럴듯한가"</b> — 슬라이드 26번의 논리와 똑같다.
+  전체 메일 집단에서 "무료"와 "당첨"은 <b>같이 자주 등장한다</b>(독립이 아니다).
+  그런데 <b>스팸이라는 조건을 걸고 나면</b> 그 관계가 상당 부분 사라진다.
+  둘이 같이 나오던 <b>진짜 이유가 "스팸이라서"</b> 였기 때문이다.
+  Naive Bayes 는 그 "상당 부분"을 <b>"전부"라고 반올림</b>한 것이다.
+</div>
+
+<h2>5. 손으로 끝까지 계산해 본다</h2>
+
+<p>
+  랩에서 쓰는 <b>15통</b> 짜리 데이터다. 스팸 6통, 정상 9통.
+</p>
+
+<table>
+  <tr><th style="width:70px">라벨</th><th>메일 본문</th></tr>
+  <tr class="spam"><td>spam</td><td><code>free money click now win</code></td></tr>
+  <tr class="spam"><td>spam</td><td><code>win free prize click link</code></td></tr>
+  <tr class="spam"><td>spam</td><td><code>urgent free offer click here</code></td></tr>
+  <tr class="spam"><td>spam</td><td><code>you win money now urgent</code></td></tr>
+  <tr class="spam"><td>spam</td><td><code>click link free lottery win</code></td></tr>
+  <tr class="spam"><td>spam</td><td><code>cheap offer free shipping the deal</code></td></tr>
+  <tr class="ham"><td>ham</td><td><code>meeting tomorrow at ten</code></td></tr>
+  <tr class="ham"><td>ham</td><td><code>please review the report</code></td></tr>
+  <tr class="ham"><td>ham</td><td><code>lunch at noon today</code></td></tr>
+  <tr class="ham"><td>ham</td><td><code>the lecture note is uploaded</code></td></tr>
+  <tr class="ham"><td>ham</td><td><code>can you send me the free file</code></td></tr>
+  <tr class="ham"><td>ham</td><td><code>homework deadline is friday</code></td></tr>
+  <tr class="ham"><td>ham</td><td><code>thanks for the quick review</code></td></tr>
+  <tr class="ham"><td>ham</td><td><code>see you at the meeting</code></td></tr>
+  <tr class="ham"><td>ham</td><td><code>please click the attached file</code></td></tr>
+</table>
+
+<h3>① prior — 아무것도 안 보고 찍으면</h3>
+
+<div class="eq">
+  ℙ[spam] = 6/15 = <b>0.400</b> &nbsp;&nbsp;·&nbsp;&nbsp; ℙ[ham] = 9/15 = <b>0.600</b>
+</div>
+
+<h3>② likelihood — 단어를 센다</h3>
+
+<p>
+  <b>그 단어가 들어 있는 메일이 몇 통인가</b>를 부류별로 센다.
+  단어가 몇 번 나왔는지가 아니라 <b>몇 통에 나왔는지</b>다 (이 방식을 Bernoulli Naive Bayes 라고 한다).
+</p>
+
+<table>
+  <tr>
+    <th>단어</th>
+    <th class="num">스팸 6통 중</th><th class="num">ℙ[w | spam]</th>
+    <th class="num">정상 9통 중</th><th class="num">ℙ[w | ham]</th>
+  </tr>
+  <tr><td><code>free</code></td><td class="num">5</td><td class="num">0.833</td><td class="num">1</td><td class="num">0.111</td></tr>
+  <tr><td><code>click</code></td><td class="num">4</td><td class="num">0.667</td><td class="num">1</td><td class="num">0.111</td></tr>
+  <tr><td><code>win</code></td><td class="num">4</td><td class="num">0.667</td><td class="num">0</td><td class="num">0.000</td></tr>
+  <tr><td><code>the</code></td><td class="num">1</td><td class="num">0.167</td><td class="num">6</td><td class="num">0.667</td></tr>
+  <tr><td><code>meeting</code></td><td class="num">0</td><td class="num">0.000</td><td class="num">2</td><td class="num">0.222</td></tr>
+</table>
+
+<p>
+  <code>free</code> 와 <code>click</code> 은 스팸 쪽이 훨씬 높다. <b>단서가 된다.</b><br>
+  <code>the</code> 는 양쪽에 골고루 나온다. <b>거의 쓸모가 없다.</b>
+  — 슬라이드 24번의 <b>독립</b>이 바로 이 감각이다. 알아도 판단이 별로 안 바뀐다.
+</p>
+
+<h3>③ 한 단어로 판정 — Bayes 한 번</h3>
+
+<div class="eq">
+  ℙ[spam | free]
+  = <span style="white-space:nowrap">0.400 × 0.833</span>
+  &nbsp;/&nbsp;
+  ( <span style="white-space:nowrap">0.400 × 0.833</span> + <span style="white-space:nowrap">0.600 × 0.111</span> )
+  = 0.3333 / 0.4000 = <b>0.833</b><br>
+  <span class="cmt">분모 0.4000 이 전확률 법칙으로 구한 ℙ[free] 다. 15통 중 free 가 든 메일이 6통 → 6/15 = 0.4. 맞는다.</span>
+</div>
+
+<div class="eq">
+  ℙ[spam | the] = 0.400×0.167 / (0.400×0.167 + 0.600×0.667) = 0.0667 / 0.4667 = <b>0.143</b><br>
+  <span class="cmt">prior 0.4 로 시작했는데 <code>the</code> 를 보고 나니 0.143 으로 <b>내려갔다.</b> 정상 메일 쪽 증거다.</span>
+</div>
+
+<h3>④ 두 단어로 판정 — 여기서 naive 가정을 쓴다</h3>
+
+<p>메일 본문이 <code>free click</code> 이라고 하자.</p>
+
+<div class="eq">
+  score(spam) = 0.400 × 0.833 × 0.667 = <b>0.2222</b><br>
+  score(ham)&nbsp; = 0.600 × 0.111 × 0.111 = <b>0.0074</b><br>
+  <span class="cmt">합 = 0.2296</span><br><br>
+  ℙ[spam | free click] = 0.2222 / 0.2296 = <b>0.968</b> &nbsp;<span class="cmt">(정확히는 30/31)</span>
+</div>
+
+<p>
+  단어 하나(0.833)일 때보다 <b>확신이 세졌다.</b>
+  증거가 쌓이면 posterior 가 한쪽으로 밀린다 — 슬라이드 19번에서 본 그 움직임이다.
+</p>
+
+<div class="viz">
+<h3>🔬 시연 — 단어를 골라 직접 판정해 본다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  단어를 눌러 메일을 만들어 보라. 위 15통 데이터로 <b>실시간으로 계산</b>한다.
+  칩 안의 작은 숫자는 <code>스팸 통수 / 정상 통수</code> 다.
+</p>
+
+<div class="ctl">
+  <button class="primary" id="nb-ex1">free click</button>
+  <button id="nb-ex2">the meeting</button>
+  <button id="nb-ex3">free money pizza</button>
+  <button id="nb-clr">비우기</button>
+  <label class="sw" style="margin-left:auto">
+    <input type="checkbox" id="nb-lap"> Laplace 보정 켜기
+  </label>
+</div>
+
+<div class="cloud" id="nb-cloud"></div>
+
+<div style="font-family:Consolas,monospace; font-size:14px; color:var(--ink);
+            background:var(--soft); border:1px solid var(--line); border-radius:8px;
+            padding:10px 14px; margin-bottom:14px; min-height:22px">
+  메일: <span id="nb-text" style="color:var(--accent); font-weight:700">(비어 있음)</span>
+</div>
+
+<div class="calc">
+  <div class="side s"><h4>score(spam)</h4><div id="nb-cs"></div></div>
+  <div class="side h"><h4>score(ham)</h4><div id="nb-ch"></div></div>
+</div>
+
+<div class="bar">
+  <div class="sp" id="nb-bs" style="width:40%"></div>
+  <div class="hm" id="nb-bh" style="width:60%"></div>
+</div>
+<div class="barlbl">
+  <span class="l">spam <span id="nb-ps">0.400</span></span>
+  <span class="r"><span id="nb-ph">0.600</span> ham</span>
+</div>
+<div class="verdict" id="nb-vd"></div>
+</div>
+
+<h2>6. 가정은 실제로 틀렸다 — 숫자로 확인한다</h2>
+
+<p>
+  naive 가정이 맞는지 <b>위 데이터에서 직접 검산</b>할 수 있다.
+  <code>free</code> 와 <code>click</code> 이 <b>스팸 조건에서 정말 독립인가?</b>
+</p>
+
+<table>
+  <tr><th>조건</th><th class="num">실제로 세면</th><th class="num">naive 가정이 말하는 값</th><th>맞나</th></tr>
+  <tr>
+    <td>ℙ[free ∩ click | spam]</td>
+    <td class="num">4/6 = <b>0.667</b></td>
+    <td class="num">0.833 × 0.667 = <b>0.556</b></td>
+    <td style="color:var(--orange); font-weight:700">아니다</td>
+  </tr>
+  <tr>
+    <td>ℙ[free ∩ click | ham]</td>
+    <td class="num">0/9 = <b>0.000</b></td>
+    <td class="num">0.111 × 0.111 = <b>0.012</b></td>
+    <td style="color:var(--orange); font-weight:700">아니다</td>
+  </tr>
+</table>
+
+<p>
+  스팸 6통 중 <code>free</code> 와 <code>click</code> 이 <b>함께</b> 들어 있는 것은 4통이다.
+  그런데 naive 가정은 0.556, 즉 <b>3.3통</b> 정도일 거라고 말한다.
+  실제보다 <b>과소평가</b>했다. 스팸 안에서도 이 두 단어는 여전히 붙어 다닌다.
+</p>
+
+<div class="note">
+  <b>⚠️ 즉, 이름 그대로 순진한(naive) 가정이다.</b>
+  현실의 언어에서 단어들은 부류를 알고 나서도 서로 얽혀 있다.
+  "오늘 <b>점심</b> 뭐 먹지"의 <b>점심</b>과 <b>먹다</b> 처럼.
+</div>
+
+<h2>7. 그런데 왜 잘 맞는가</h2>
+
+<p>
+  틀린 가정을 썼는데도 이 분류기는 실무에서 오래 살아남았다. 이유가 셋이다.
+</p>
+
+<h3>이유 ① — 우리는 값이 아니라 <b>순위</b>만 필요하다</h3>
+
+<p>
+  위 <code>free click</code> 을 <b>가정 없이 정확하게</b> 계산해 보자.
+  실제로 센 값 0.667 과 0.000 을 그대로 쓰면 이렇게 된다.
+</p>
+
+<div class="eq">
+  정확한 계산 : &nbsp; 0.400 × 0.667 &nbsp;/&nbsp; (0.400 × 0.667 + 0.600 × 0.000) = <b>1.000</b><br>
+  naive 계산 &nbsp;: &nbsp; <b>0.968</b><br>
+  <span class="cmt">확률값은 다르다. 그런데 <b>둘 다 spam 으로 판정</b>한다. 분류 결과는 같다.</span>
+</div>
+
+<p>
+  분류기의 답은 <b>argmax</b>, 곧 <b>어느 쪽이 크냐</b> 하나로 정해진다.
+  확률값이 0.968 이든 1.000 이든 <b>spam &gt; ham</b> 이라는 사실이 바뀌지 않으면 답도 안 바뀐다.
+  naive 가정은 <b>확률값을 망가뜨리지만 순서는 자주 보존한다.</b>
+</p>
+
+<h3>이유 ② — 셀 수 있는 것만 센다</h3>
+
+<p>
+  정확한 계산은 위에서 <b>0.000 을 만나 분모가 위태로웠다.</b>
+  단어가 세 개, 네 개로 늘어나면 "그 조합이 통째로 나온 메일" 은 거의 항상 0통이다.
+  <b>정확하지만 계산할 수 없는 답</b>보다, <b>어긋나지만 항상 계산되는 답</b>이 쓸모 있다.
+</p>
+
+<h3>이유 ③ — 파라미터가 적어 데이터가 적어도 버틴다</h3>
+
+<p>
+  추정할 값이 84개뿐이라 <b>15통으로도 각 값이 안정적</b>이다.
+  값이 4조 개면 대부분이 0이거나 표본 하나로 정해진 엉터리 값이 된다.
+  <b>덜 유연한 모형이 오히려 덜 흔들린다</b> — 데이터가 적을수록 이 이점이 커진다.
+</p>
+
+<div class="link">
+  <b>정리하면</b> — Naive Bayes 는 <b>"확률 추정기"로는 나쁘고 "분류기"로는 괜찮다.</b>
+  그래서 나온 값을 <b>확신의 정도로 읽으면 위험하다.</b> 0.968 을 "96.8% 확신" 으로 읽지 말 것.
+  판정에만 쓰고, 값 자체를 믿어야 하는 자리에는 다른 모형을 쓴다.
+</div>
+
+<h2>8. 실전에서 반드시 만나는 함정 둘</h2>
+
+<h3>함정 ① — 처음 보는 단어가 확률을 0 으로 무너뜨린다</h3>
+
+<p>
+  <code>free money pizza</code> 를 판정해 보자.
+  <code>pizza</code> 는 15통 어디에도 없다. 그러면 양쪽 다 0 이 곱해진다.
+</p>
+
+<div class="eq">
+  score(spam) = 0.400 × 0.833 × 0.333 × <b>0</b> = 0<br>
+  score(ham)&nbsp; = 0.600 × 0.111 × 0.000 × <b>0</b> = 0<br>
+  <span class="cmt">0 / 0 — <b>판정 불능</b>이다. 앞의 두 단어가 준 증거가 통째로 사라졌다.</span>
+</div>
+
+<p>
+  단어 하나가 곱셈 전체를 0 으로 만든다.
+  <b>증거 아홉 개가 스팸을 가리켜도, 처음 보는 단어 하나가 전부를 지운다.</b>
+</p>
+
+<p>
+  해결은 간단하다. <b>세지 못한 것에도 아주 작은 몫을 미리 나눠 준다.</b>
+  분자·분모에 각각 1 과 2 를 더하는 방식을 <b>Laplace smoothing</b> 이라고 한다.
+</p>
+
+<div class="eq">
+  ℙ[<i>w</i> | spam] = (그 단어가 든 스팸 통수 <b>+ 1</b>) / (스팸 총 통수 <b>+ 2</b>)<br>
+  <span class="cmt">pizza → (0+1)/(6+2) = 0.125. 0 이 사라져 곱셈이 살아난다.</span>
+</div>
+
+<p>
+  위 시연에서 <b>"Laplace 보정 켜기"</b> 를 눌러 보라.
+  <code>free money pizza</code> 가 <b>판정 불능에서 0.940</b> 으로 살아난다.
+</p>
+
+<div class="link">
+  <b>왜 이게 정당한가는 Topic 13 에서 답한다.</b>
+  "+1" 은 아무렇게나 넣은 보정이 아니라
+  <b>"모든 값이 조금씩은 가능하다"는 prior 를 넣은 결과</b>다.
+  Topic 13 에서 prior 가 <b>하나의 값이 아니라 분포</b>로 확장되면,
+  이 "+1" 이 Beta 분포의 posterior 평균에서 자연스럽게 나오는 것을 보게 된다.
+</div>
+
+<h3>함정 ② — 곱하다 보면 컴퓨터가 0 으로 읽는다</h3>
+
+<p>
+  실제 메일은 단어가 수백 개다. 0.01 정도의 확률을 100번 곱하면 10<sup>-200</sup> 이다.
+  200번 곱하면 <b>컴퓨터가 그냥 0.0 으로 만들어 버린다</b>(underflow).
+</p>
+
+<p>
+  해결도 정해져 있다. <b>곱셈을 로그로 바꿔 덧셈으로 만든다.</b>
+</p>
+
+<div class="eq">
+  log score(spam) = log ℙ[spam] + Σ<sub>i</sub> log ℙ[<i>w<sub>i</sub></i> | spam]<br>
+  <span class="cmt">log 는 <b>단조증가</b>라 크기 순서를 바꾸지 않는다. argmax 를 고르는 데 아무 지장이 없다.</span>
+</div>
+
+<p>
+  로그를 씌우면 -0.5 같은 값들의 덧셈이 되어 아무리 길어도 안전하다.
+  <b>순서만 지키면 되니까</b> 가능한 요령이다 — 이유 ① 과 같은 발상이다.
+</p>
+
+<h2>9. 세 가지 얼굴 — 무엇을 세느냐만 다르다</h2>
+
+<p>
+  Naive Bayes 는 <b>ℙ[특징 | 부류] 를 무엇으로 두느냐</b>에 따라 이름이 갈린다.
+  뼈대(Bayes + 조건부 독립)는 셋 다 똑같다.
+</p>
+
+<table>
+  <tr><th>이름</th><th>특징이 무엇인가</th><th>ℙ[특징 | 부류] 를 어떻게 두나</th></tr>
+  <tr>
+    <td><b>Bernoulli</b> NB</td>
+    <td>단어가 <b>있다 / 없다</b></td>
+    <td>그 단어가 든 <b>문서 비율</b> &nbsp;<span style="color:var(--accent)">← 이 문서·랩이 쓰는 방식</span></td>
+  </tr>
+  <tr>
+    <td><b>Multinomial</b> NB</td>
+    <td>단어가 <b>몇 번</b> 나왔나</td>
+    <td>전체 단어 수 대비 <b>등장 횟수 비율</b>. 텍스트 분류의 표준</td>
+  </tr>
+  <tr>
+    <td><b>Gaussian</b> NB</td>
+    <td>키·온도 같은 <b>연속값</b></td>
+    <td>부류별 <b>정규분포</b>의 평균·분산 &nbsp;<span class="cmt">(Topic 7 에서 배운다)</span></td>
+  </tr>
+</table>
+
+<p>
+  Gaussian NB 는 <b>Topic 7 (Gaussian)</b> 을 배운 뒤에 읽으면 바로 이해된다.
+  세는 대신 <b>부류별로 종 모양 곡선을 하나씩 그려 두고</b>, 그 높이를 likelihood 로 쓴다.
+</p>
+
+<h2>10. 어디서 쓰이나</h2>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">스팸 필터</span>
+    <b>1998~2000년대 초</b><br>
+    Paul Graham 의 글 <i>"A Plan for Spam"</i>(2002) 이후
+    거의 모든 메일 서비스가 이 방식을 썼다.
+  </div>
+  <div class="card">
+    <span class="lbl">텍스트 분류</span>
+    <b>지금도 baseline</b><br>
+    뉴스 주제 분류, 감성 분석. 새 모형을 만들면
+    <b>"NB 보다 나은가"</b> 부터 확인한다.
+  </div>
+  <div class="card">
+    <span class="lbl">의료·생물</span>
+    <b>초기 진단 보조</b><br>
+    증상 여러 개로 질병을 추린다.
+    Topic 2 도입부의 질병 검사가 <b>증상 1개짜리 NB</b> 다.
+  </div>
+</div>
+
+<p>
+  <b>왜 아직도 baseline 인가</b> — 학습이 <b>세기 한 번</b>으로 끝나 압도적으로 빠르고,
+  값이 왜 그렇게 나왔는지 <b>단어별로 뜯어볼 수 있고</b>,
+  데이터가 적을 때 큰 모형보다 자주 이기기 때문이다.
+</p>
+
+<h2>11. 한 장으로 정리</h2>
+
+<div class="cards c2">
+  <div class="card ok">
+    <span class="lbl">쓰는 재료</span>
+    <b>Topic 2 에서 배운 것이 전부다</b>
+    <ul style="margin:8px 0 0; padding-left:18px">
+      <li>Bayes 정리 — 방향 뒤집기</li>
+      <li>전확률 법칙 — 분모 만들기</li>
+      <li>조건부 독립 — 곱으로 쪼개기</li>
+    </ul>
+  </div>
+  <div class="card no">
+    <span class="lbl">알고 써야 하는 것</span>
+    <b>세 가지 주의</b>
+    <ul style="margin:8px 0 0; padding-left:18px">
+      <li>가정이 틀렸다 → <b>확률값을 믿지 말 것</b></li>
+      <li>못 본 단어 → <b>Laplace 보정 필수</b></li>
+      <li>단어가 많으면 → <b>로그로 계산</b></li>
+    </ul>
+  </div>
+</div>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — Naive Bayes 는
+  <b>"부류를 알면 단어들은 서로 무관하다"</b>는 <b>틀린 가정</b>을 일부러 받아들여,
+  셀 수 없던 것을 <b>셀 수 있게 만든</b> 분류기다.
+  값은 어긋나지만 <b>순위는 대체로 살아남아</b> 답이 맞는다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 2 슬라이드 29·30번 보충 &nbsp;·&nbsp;
+  수치는 모두 랩 데이터 15통에서 직접 계산한 값이다 &nbsp;·&nbsp;
+  시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const MAILS = [
+    ["spam","free money click now win"],
+    ["spam","win free prize click link"],
+    ["spam","urgent free offer click here"],
+    ["spam","you win money now urgent"],
+    ["spam","click link free lottery win"],
+    ["spam","cheap offer free shipping the deal"],
+    ["ham","meeting tomorrow at ten"],
+    ["ham","please review the report"],
+    ["ham","lunch at noon today"],
+    ["ham","the lecture note is uploaded"],
+    ["ham","can you send me the free file"],
+    ["ham","homework deadline is friday"],
+    ["ham","thanks for the quick review"],
+    ["ham","see you at the meeting"],
+    ["ham","please click the attached file"],
+  ];
+  const S = MAILS.filter(m=>m[0]==="spam").map(m=>new Set(m[1].split(" ")));
+  const H = MAILS.filter(m=>m[0]==="ham" ).map(m=>new Set(m[1].split(" ")));
+  const PS = S.length/MAILS.length, PH = H.length/MAILS.length;
+
+  // 어휘 — 등장 순서를 유지하되 중복 제거
+  const VOCAB = [];
+  MAILS.forEach(m=>m[1].split(" ").forEach(w=>{ if(!VOCAB.includes(w)) VOCAB.push(w); }));
+  VOCAB.sort();
+  VOCAB.push("pizza");                     // 학습에 없던 단어 — 함정 ① 시연용
+
+  const cnt = (w, ms) => ms.reduce((a,m)=>a+(m.has(w)?1:0), 0);
+  const prob = (w, ms, lap) =>
+    lap ? (cnt(w,ms)+1)/(ms.length+2) : cnt(w,ms)/ms.length;
+
+  let picked = [];                          // 선택한 단어 (순서 유지)
+  const $ = id => document.getElementById(id);
+  const cloud = $("nb-cloud");
+
+  // ── 단어 칩 그리기 ──
+  VOCAB.forEach(w=>{
+    const b = document.createElement("button");
+    b.className = "w"; b.dataset.w = w;
+    b.innerHTML = w + '<span class="sc">' + cnt(w,S) + "/" + cnt(w,H) + "</span>";
+    b.onclick = () => {
+      const i = picked.indexOf(w);
+      if (i >= 0) picked.splice(i,1); else picked.push(w);
+      render();
+    };
+    cloud.appendChild(b);
+  });
+
+  const fmt = x => (x===0 ? "0" : x < 1e-4 ? x.toExponential(2) : x.toFixed(4));
+
+  function render(){
+    const lap = $("nb-lap").checked;
+    [...cloud.children].forEach(b =>
+      b.classList.toggle("on", picked.includes(b.dataset.w)));
+    $("nb-text").textContent = picked.length ? picked.join(" ") : "(비어 있음)";
+
+    // score 를 단계별로 쌓는다 — prior 에서 시작해 단어마다 곱한다
+    let ss = PS, sh = PH;
+    let rowsS = '<div class="rowline"><span>prior ℙ[spam]</span><span>'+PS.toFixed(4)+"</span></div>";
+    let rowsH = '<div class="rowline"><span>prior ℙ[ham]</span><span>'+PH.toFixed(4)+"</span></div>";
+    picked.forEach(w=>{
+      const a = prob(w,S,lap), b = prob(w,H,lap);
+      ss *= a; sh *= b;
+      const z = v => v===0 ? ' class="z"' : "";
+      rowsS += '<div class="rowline"><span>× ℙ['+w+' | spam]</span><span'+z(a)+">"+a.toFixed(4)+"</span></div>";
+      rowsH += '<div class="rowline"><span>× ℙ['+w+' | ham]</span><span'+z(b)+">"+b.toFixed(4)+"</span></div>";
+    });
+    rowsS += '<div class="rowline tot"><span>score(spam)</span><span>'+fmt(ss)+"</span></div>";
+    rowsH += '<div class="rowline tot"><span>score(ham)</span><span>'+fmt(sh)+"</span></div>";
+    $("nb-cs").innerHTML = rowsS;
+    $("nb-ch").innerHTML = rowsH;
+
+    const tot = ss + sh;
+    if (tot === 0){                          // 함정 ① — 0/0
+      $("nb-bs").style.width = "0%"; $("nb-bh").style.width = "0%";
+      $("nb-ps").textContent = "—"; $("nb-ph").textContent = "—";
+      $("nb-vd").innerHTML =
+        '판정 <span class="tagv x">불능</span>'
+        + '<div style="font-size:13.5px;font-weight:400;color:var(--muted);margin-top:6px">'
+        + 'score 가 양쪽 모두 0 이다 — 학습에 없던 단어가 곱셈을 무너뜨렸다.'
+        + ' <b style="color:var(--orange)">Laplace 보정을 켜 보라.</b></div>';
+      return;
+    }
+    const ps = ss/tot, ph = sh/tot;
+    $("nb-bs").style.width = (ps*100).toFixed(2)+"%";
+    $("nb-bh").style.width = (ph*100).toFixed(2)+"%";
+    $("nb-ps").textContent = ps.toFixed(3);
+    $("nb-ph").textContent = ph.toFixed(3);
+    const win = ps > ph;
+    $("nb-vd").innerHTML =
+      (picked.length ? "판정" : "아무 단어도 안 봤을 때 (prior 그대로)")
+      + ' <span class="tagv ' + (win?"s":"h") + '">' + (win?"SPAM":"HAM") + "</span>"
+      + '<div style="font-size:13.5px;font-weight:400;color:var(--muted);margin-top:6px">'
+      + "ℙ[spam | 본문] = " + fmt(ss) + " / " + fmt(tot) + " = <b>" + ps.toFixed(4) + "</b></div>";
+  }
+
+  const set = t => { picked = t ? t.split(" ") : []; render(); };
+  $("nb-ex1").onclick = () => set("free click");
+  $("nb-ex2").onclick = () => set("the meeting");
+  $("nb-ex3").onclick = () => set("free money pizza");
+  $("nb-clr").onclick = () => set("");
+  $("nb-lap").onchange = render;
+
+  set("free click");
+})();
+</script>
+</body>
+</html>

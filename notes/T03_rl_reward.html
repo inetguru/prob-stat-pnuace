@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>강화학습과 보상 — 기댓값을 최대화하는 학습</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cmt{color:var(--muted); font-size:14px}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  .card.ok .lbl{color:var(--teal); background:#e6f6f3}
+  .card.no .lbl{color:var(--orange); background:#fdf1e3}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .ctl{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+  button{font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--body);
+    border-radius:7px; padding:8px 13px; transition:all .12s}
+  button:hover:not(:disabled){border-color:var(--accent); color:var(--accent)}
+  button:disabled{opacity:.45; cursor:default}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  button.primary:hover:not(:disabled){filter:brightness(1.08); color:#fff}
+  .hint{font-size:13px; color:var(--muted); margin-left:auto}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft)}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:23px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile .f{font-size:11.5px; color:var(--muted); font-family:Consolas,monospace}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  canvas{max-width:100%; display:block}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(2,1fr)}
+  }
+  .loop{display:grid; grid-template-columns:1fr 90px 1fr; align-items:center; gap:10px;
+        margin:22px 0; text-align:center}
+  .box{border:2px solid var(--accent); border-radius:10px; padding:16px 12px; background:#eef1fe}
+  .box b{display:block; font-size:17px; color:var(--ink)}
+  .box span{font-size:13px; color:var(--body)}
+  .box.env{border-color:var(--teal); background:#e6f6f3}
+  .arr{font-size:13px; color:var(--muted); line-height:1.5}
+  .arr b{display:block; color:var(--accent); font-size:20px}
+  .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:14px}
+  .arm{border:1px solid var(--line); border-radius:9px; padding:14px; background:var(--soft);
+       cursor:pointer; transition:all .12s; text-align:center}
+  .arm:hover{border-color:var(--accent)}
+  .arm h4{margin:0 0 6px; font-size:16px; color:var(--ink)}
+  .arm .est{font-family:Consolas,monospace; font-size:22px; font-weight:800; color:var(--accent)}
+  .arm .cnt{font-size:12px; color:var(--muted)}
+  .arm.best{border-color:var(--teal); background:#e6f6f3}
+  .arm.best .est{color:var(--teal)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>강화학습과 보상</h1>
+<p class="sub">
+  확률통계 · Topic 3 보충자료 — 슬라이드 <b>26번 (→AI 연결점)</b> 의
+  <b>RL · Expected reward</b>
+</p>
+
+<p>
+  슬라이드에서 <b>"강화학습 에이전트는 미래 보상의 기댓값을 최대화한다"</b> 고 한 줄로 지나갔다.
+  <b>강화학습(Reinforcement Learning, RL)</b> 이 무엇인지, 그리고 왜 하필 <b>기댓값</b>인지를
+  Topic 3 의 언어로만 설명한다. 새 확률 개념은 나오지 않는다.
+</p>
+
+<h2>1. 무엇이 다른가 — 정답 대신 점수를 받는다</h2>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">지도학습</span>
+    <b>정답을 알려 준다</b><br>
+    사진을 주고 <b>"이건 고양이야"</b> 라고 알려 준다.
+    틀린 만큼이 곧 손실이다 — <b>무엇이 옳았는지 안다.</b>
+  </div>
+  <div class="card ok">
+    <span class="lbl">강화학습</span>
+    <b>점수만 준다</b><br>
+    게임을 두게 하고 끝나면 <b>"이겼다 / 졌다"</b> 만 알려 준다.
+    <b>어느 수가 좋았는지는 말해 주지 않는다.</b>
+  </div>
+</div>
+
+<p>
+  바둑에서 200수를 두고 졌다고 하자. <b>어느 수가 패인인가?</b> 아무도 모른다.
+  이 상황에서 배우려면 <b>"여러 번 해 보고 평균적으로 좋은 수를 찾는"</b> 수밖에 없다.
+  그래서 강화학습은 <b>처음부터 끝까지 기댓값의 문제</b>다.
+</p>
+
+<h2>2. 등장인물 넷</h2>
+
+<div class="loop">
+  <div class="box">
+    <b>에이전트 (agent)</b>
+    <span>배우는 쪽. 행동을 고른다</span>
+  </div>
+  <div class="arr"><b>→</b>행동 <i>A<sub>t</sub></i></div>
+  <div class="box env">
+    <b>환경 (environment)</b>
+    <span>게임판·세상. 결과를 돌려준다</span>
+  </div>
+</div>
+<div class="loop" style="margin-top:-8px">
+  <div class="box" style="visibility:hidden"><b>·</b></div>
+  <div class="arr"><b>←</b>보상 <i>R<sub>t+1</sub></i><br>상태 <i>S<sub>t+1</sub></i></div>
+  <div class="box" style="visibility:hidden"><b>·</b></div>
+</div>
+
+<table>
+  <tr><th style="width:150px">이름</th><th>정체</th><th style="width:230px">Topic 3 의 무엇인가</th></tr>
+  <tr><td><b>상태</b> S<sub>t</sub></td><td>지금 판이 어떻게 생겼나</td><td>—</td></tr>
+  <tr><td><b>행동</b> A<sub>t</sub></td><td>에이전트가 고른 것</td><td>우리가 <b>고르는</b> 것</td></tr>
+  <tr><td><b>보상</b> R<sub>t+1</sub></td><td>그 행동의 결과로 받은 <b>숫자 하나</b></td>
+      <td>⭐ <b>확률변수</b> — 결과에 숫자를 대응시킨 것</td></tr>
+  <tr><td><b>정책</b> π</td><td>상태를 보고 행동을 고르는 규칙</td><td>우리가 <b>최적화하는</b> 대상</td></tr>
+</table>
+
+<div class="note">
+  <b>⚠️ 보상은 확률변수다.</b> 같은 상태에서 같은 행동을 해도
+  <b>매번 같은 보상이 나오지 않는다.</b> 상대가 다르게 두고, 주사위가 다르게 나오고,
+  바람이 다르게 분다. 그래서 <b>보상 하나를 보고 판단하면 안 되고 평균을 봐야 한다</b> —
+  Topic 3 의 출발점 그대로다.
+</div>
+
+<h2>3. 목표 — 한 판 전체의 보상을 하나의 숫자로</h2>
+
+<p>
+  보상은 매 스텝 조금씩 들어온다. 한 판이 끝날 때까지 받은 것을 <b>다 더한 것</b>을
+  <b>수익(return)</b> 이라 하고 <i>G</i> 로 쓴다.
+</p>
+
+<div class="eq">
+  <i>G</i> = <i>R</i><sub>1</sub> + <i>R</i><sub>2</sub> + <i>R</i><sub>3</sub> + …<br>
+  <span class="cmt">보상 하나하나가 확률변수이므로, <b>그 합인 G 도 확률변수</b>다.</span>
+</div>
+
+<h3>감가율 γ — 먼 미래를 깎아서 본다</h3>
+
+<p>
+  판이 끝나지 않고 계속되면 위 합은 <b>무한대</b>가 되어 비교가 안 된다.
+  그래서 <b>먼 미래의 보상일수록 조금씩 깎는다.</b>
+</p>
+
+<div class="eq">
+  <i>G</i> = <i>R</i><sub>1</sub> + γ<i>R</i><sub>2</sub> + γ²<i>R</i><sub>3</sub> + … &nbsp;&nbsp;
+  <span class="cmt">(0 ≤ γ &lt; 1)</span><br><br>
+  매 스텝 1 씩 받는다면 &nbsp; <i>G</i> = 1 + γ + γ² + … = <b>1 / (1 − γ)</b><br>
+  <span class="cmt">
+    γ = 0.5 → 2 &nbsp;·&nbsp; γ = 0.9 → 10 &nbsp;·&nbsp; γ = 0.99 → 100.
+    <b>γ 는 "몇 스텝 앞까지 내다보는가"를 정하는 손잡이</b>다.
+  </span>
+</div>
+
+<div class="note">
+  <b>⚠️ γ 는 수학적 편의만이 아니다.</b> 우리도 <b>당장의 만족을 미래보다 크게</b> 친다.
+  γ 가 작으면 근시안적인 에이전트, γ 가 1 에 가까우면 <b>먼 미래를 위해 지금 손해를 감수하는</b>
+  에이전트가 된다. 바둑처럼 <b>마지막에만 보상이 있는</b> 문제는 γ 를 1 에 가깝게 둔다.
+</div>
+
+<h2>4. 그래서 무엇을 최대화하나 — 가치함수</h2>
+
+<p>
+  <i>G</i> 는 확률변수라 <b>판마다 값이 다르다.</b> 운이 좋으면 크고 나쁘면 작다.
+  <b>운을 걷어내고 정책의 좋고 나쁨만 보려면 평균을 내야 한다.</b>
+</p>
+
+<div class="eq" style="border-left-color:var(--pink)">
+  <b>가치함수 (value function)</b><br>
+  <i>V</i><sup>π</sup>(<i>s</i>) = 𝔼[ <i>G</i> | 상태 <i>s</i> 에서 시작, 정책 π 로 계속 ]<br>
+  <span class="cmt">
+    ⭐ <b>기댓값 + 조건부.</b> Topic 3 의 기댓값에 Topic 2 의 조건이 붙었을 뿐이다.
+    새로운 것이 하나도 없다.
+  </span>
+</div>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>강화학습의 목표</b> — <i>V</i><sup>π</sup> 를 가장 크게 만드는 정책 π 를 찾는다.<br>
+  <span class="cmt">
+    슬라이드 26번의 "미래 보상의 <b>기댓값</b>을 최대화한다"가 이 한 줄이다.
+    손실함수(ML)는 기댓값을 <b>줄이고</b>, 강화학습은 기댓값을 <b>키운다</b> — 방향만 반대다.
+  </span>
+</div>
+
+<h3>선형성이 바닥에 깔려 있다</h3>
+
+<p>
+  <i>G</i> 의 기댓값을 구하려면 <b>한 판 전체의 분포</b>가 필요할 것 같다.
+  한 판이 수백 스텝이면 경우의 수가 천문학적이다. 그런데 <b>선형성 덕에 그럴 필요가 없다</b>
+  (슬라이드 15·16번의 "주사위 100개의 합"과 완전히 같은 상황이다).
+</p>
+
+<div class="eq">
+  𝔼[<i>G</i>] = 𝔼[<i>R</i><sub>1</sub>] + γ𝔼[<i>R</i><sub>2</sub>] + γ²𝔼[<i>R</i><sub>3</sub>] + …<br>
+  <span class="cmt">
+    <b>보상들이 서로 독립이 아니어도 성립한다.</b> 앞 스텝의 행동이 뒤 스텝을 바꾸는데도
+    그냥 더할 수 있다. 이 성질이 없으면 강화학습은 계산이 불가능하다.
+  </span>
+</div>
+
+<div class="link">
+  <b>⭐ 여기서 한 걸음 더 가면 Bellman 방정식이다.</b><br>
+  <i>V</i>(<i>s</i>) = 𝔼[ <i>R</i> + γ<i>V</i>(<i>s</i>′) ] — <b>"지금 받을 보상 + 다음 상태의 가치"</b>.
+  기댓값의 선형성으로 <b>무한히 긴 합을 한 스텝짜리 관계로</b> 접은 것이다.
+  강화학습 알고리즘의 거의 전부가 이 식을 푸는 방법들이다.
+  <b>Topic 15(Markov)에서 "다음 상태만 보면 된다"는 구조를 배우면</b> 이 식이 왜 성립하는지 보인다.
+</div>
+
+<h2>5. 가장 작은 강화학습 — 두 대의 슬롯머신</h2>
+
+<p>
+  상태가 하나뿐이면 강화학습은 <b>"어느 버튼이 더 좋은가"</b> 를 알아내는 문제로 줄어든다.
+  이것을 <b>multi-armed bandit</b> 이라고 한다. 여기에 강화학습의 핵심 갈등이 다 들어 있다.
+</p>
+
+<div class="viz">
+<h3>🔬 시연 — 눌러서 직접 알아내 보라</h3>
+<p style="font-size:14.5px; margin-top:0">
+  버튼 두 개의 <b>진짜 승률은 가려져 있다.</b> 눌러 보고 평균을 쌓아 알아내야 한다.
+  <b>화면에 뜨는 값은 기댓값이 아니라 지금까지의 표본평균</b>이다.
+</p>
+
+<div class="ctl">
+  <button id="b-auto">자동으로 100번 (탐욕적)</button>
+  <button id="b-eps" class="primary">자동으로 100번 (ε=0.1 탐험)</button>
+  <button id="b-reset">처음부터</button>
+  <span class="hint" id="b-hint">직접 눌러 보라</span>
+</div>
+
+<div class="grid">
+  <div class="arm" id="b-a"><h4>버튼 A</h4><div class="est">—</div><div class="cnt">0번 눌렀다</div></div>
+  <div class="arm" id="b-b"><h4>버튼 B</h4><div class="est">—</div><div class="cnt">0번 눌렀다</div></div>
+</div>
+
+<div class="tiles" style="margin-top:14px">
+  <div class="tile"><div class="t">누른 횟수</div><div class="n" id="b-n">0</div><div class="f">전체</div></div>
+  <div class="tile hi"><div class="t">받은 보상</div><div class="n" id="b-r">0</div><div class="f">합계</div></div>
+  <div class="tile"><div class="t">최선을 다 알았다면</div><div class="n" id="b-opt">0</div><div class="f">기대 보상</div></div>
+  <div class="tile"><div class="t">후회 (regret)</div><div class="n" id="b-reg">0</div><div class="f">몰라서 잃은 것</div></div>
+</div>
+<p id="b-msg" style="font-size:14px; margin:14px 0 0; padding:10px 14px; border-radius:7px;
+   background:var(--soft); color:var(--ink)">버튼을 눌러 보라.</p>
+</div>
+
+<h2>6. 탐험과 활용 — 평균을 믿으려면 표본이 있어야 한다</h2>
+
+<p>
+  위 시연에서 <b>"탐욕적"</b> 버튼을 눌러 보라. 지금까지 평균이 높은 쪽만 계속 고른다.
+  운 나쁘게 <b>진짜 좋은 버튼이 처음 두어 번 실패하면</b>, 그 뒤로 영영 눌러 보지 않는다.
+</p>
+
+<div class="cards c2">
+  <div class="card no">
+    <span class="lbl">활용 (exploitation)</span>
+    <b>지금까지 제일 좋아 보이는 것을 고른다</b><br>
+    당장 손해는 없다. 그런데 <b>표본이 적은 선택지의 평균은 못 믿는다</b> —
+    안 눌러 봤으니 영원히 못 믿는다.
+  </div>
+  <div class="card ok">
+    <span class="lbl">탐험 (exploration)</span>
+    <b>가끔 일부러 다른 것을 고른다</b><br>
+    당장은 손해다. 대신 <b>표본이 쌓여 평균이 진짜에 가까워진다.</b>
+    ε = 0.1 이면 10번에 1번 무작위로 고른다.
+  </div>
+</div>
+
+<div class="link">
+  <b>⭐ 이 갈등의 뿌리가 Topic 3 이다.</b>
+  우리가 화면에서 보는 값은 <b>기댓값이 아니라 표본평균</b>이다.
+  표본이 적으면 <b>표본평균의 흩어짐이 크다</b> — 슬라이드 21번의 분산이다.
+  <b>몇 번을 눌러야 믿을 만한가</b>에 답하는 것이 <b>Topic 10 (LLN·CLT)</b> 이고,
+  이 값을 확률분포로 들고 다니며 갱신하는 것이 <b>Topic 13 (베이지안)</b> 이다.
+</div>
+
+<h3>후회 (regret) — 몰라서 잃은 양</h3>
+
+<div class="eq">
+  후회 = (최선을 처음부터 알았다면 받았을 보상) − (실제로 받은 보상)<br>
+  <span class="cmt">
+    시연의 마지막 타일이 이것이다. 좋은 알고리즘은 <b>후회가 천천히 자란다.</b>
+    탐험을 아예 안 하면 후회가 <b>횟수에 비례해</b> 자라고, 적당히 탐험하면 훨씬 느리게 자란다.
+  </span>
+</div>
+
+<h2>7. 한 장으로 정리</h2>
+
+<table>
+  <tr><th style="width:230px">Topic 3 에서 배운 것</th><th>강화학습에서 이렇게 나타난다</th></tr>
+  <tr><td>확률변수 (슬라이드 10)</td><td><b>보상 R</b> — 같은 행동에도 매번 다른 숫자가 나온다</td></tr>
+  <tr><td>기댓값 (14)</td><td><b>가치함수 V</b> — 운을 걷어내고 정책만 평가한다</td></tr>
+  <tr><td>선형성 (15·16)</td><td>수백 스텝의 합을 <b>분포 없이</b> 다룰 수 있는 근거 → Bellman 방정식</td></tr>
+  <tr><td>분산 (21)</td><td><b>표본이 적으면 평균을 믿을 수 없다</b> → 탐험이 필요한 이유</td></tr>
+  <tr><td>평균의 함정 (23)</td><td>기대 보상이 같아도 <b>가끔 크게 망하는</b> 정책이 있다 (위험 민감 RL)</td></tr>
+</table>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — 강화학습은 <b>보상이라는 확률변수의 기댓값을 가장 크게 만드는
+  행동 규칙을 찾는 일</b> 이다. 기댓값을 <b>모르니 눌러 보며 평균을 쌓아야 하고</b>,
+  그 평균을 믿으려면 <b>흩어짐</b>을 알아야 한다. 오늘 배운 두 축이 그대로 쓰인다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 3 슬라이드 26번 보충 &nbsp;·&nbsp;
+  Topic 10(표본평균을 얼마나 믿나) · Topic 13(믿음을 분포로) · Topic 15(Markov) 로 이어진다 &nbsp;·&nbsp;
+  시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const TRUE = { A: 0.5, B: 0.6 };          // 가려진 진짜 승률 — B 가 낫다
+  const BEST = Math.max(TRUE.A, TRUE.B);
+
+  /* 시드 고정 LCG (MINSTD) — 다시 열어도 같은 이야기가 나오게 한다.
+     ⚠️ seed × 16807 은 3.6e13 로 2^53 안쪽이라 안전하다. */
+  let seed = 20260302 % 2147483647;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  let n = { A: 0, B: 0 }, sum = { A: 0, B: 0 }, total = 0, reward = 0;
+
+  const est = k => n[k] ? sum[k] / n[k] : NaN;
+
+  function pull(k){
+    const r = rnd() < TRUE[k] ? 1 : 0;
+    n[k]++; sum[k] += r; total++; reward += r;
+    return r;
+  }
+
+  function render(msg){
+    ["A", "B"].forEach(k => {
+      const el = $("b-" + k.toLowerCase());
+      const e = est(k);
+      el.querySelector(".est").textContent = Number.isFinite(e) ? e.toFixed(3) : "—";
+      el.querySelector(".cnt").textContent = n[k] + "번 눌렀다";
+      el.classList.remove("best");
+    });
+    // 지금까지의 표본평균이 높은 쪽을 표시 — 진짜 정답이 아니라 "지금 믿고 있는 것"
+    const eA = est("A"), eB = est("B");
+    if (Number.isFinite(eA) && Number.isFinite(eB))
+      $(eA >= eB ? "b-a" : "b-b").classList.add("best");
+
+    $("b-n").textContent = total;
+    $("b-r").textContent = reward;
+    $("b-opt").textContent = (total * BEST).toFixed(1);
+    $("b-reg").textContent = (total * BEST - reward).toFixed(1);
+    if (msg) $("b-msg").innerHTML = msg;
+  }
+
+  $("b-a").onclick = () => { const r = pull("A"); render("버튼 A → 보상 <b>" + r + "</b>"); };
+  $("b-b").onclick = () => { const r = pull("B"); render("버튼 B → 보상 <b>" + r + "</b>"); };
+
+  function run(eps){
+    for (let i = 0; i < 100; i++){
+      let k;
+      if (!n.A) k = "A";                     // 각 버튼을 한 번씩은 눌러 본다
+      else if (!n.B) k = "B";
+      else if (rnd() < eps) k = rnd() < 0.5 ? "A" : "B";   // 탐험
+      else k = est("A") >= est("B") ? "A" : "B";           // 활용
+      pull(k);
+    }
+    const reg = total * BEST - reward;
+    render("100번 더 눌렀다. 지금까지 <b>A " + n.A + "번 · B " + n.B + "번</b>, "
+         + "후회 <b>" + reg.toFixed(1) + "</b>. "
+         + (eps ? "탐험을 섞으면 <b>더 나은 쪽으로 결국 옮겨 간다.</b>"
+                : "⚠️ 탐욕적이면 <b>한쪽에 갇히기 쉽다</b> — 안 눌러 본 버튼은 영원히 모른다."));
+  }
+  $("b-auto").onclick = () => run(0);
+  $("b-eps").onclick  = () => run(0.1);
+  $("b-reset").onclick = () => {
+    seed = 20260302 % 2147483647;
+    n = { A: 0, B: 0 }; sum = { A: 0, B: 0 }; total = 0; reward = 0;
+    render("처음으로 되돌렸다. 진짜 승률은 여전히 가려져 있다.");
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
