@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Binomial의 극한이 Poisson이 되는 이유</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cmt{color:var(--muted); font-size:14px}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft)}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:20px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile .f{font-size:11.5px; color:var(--muted); font-family:Consolas,monospace}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  .legend{display:flex; gap:18px; font-size:13px; color:var(--body); margin-top:10px}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .sw{width:12px; height:12px; border-radius:3px; display:inline-block}
+  canvas{max-width:100%; display:block}
+  .interval{display:flex; align-items:center; gap:2px; margin:22px 0; overflow-x:auto; padding:8px 0}
+  .cell{flex:0 0 34px; height:34px; border:1px solid var(--line); border-radius:5px;
+        display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--muted);
+        font-family:Consolas,monospace; background:var(--soft)}
+  .cell.hit{border-color:var(--orange); background:#fdf1e3; color:#b45309; font-weight:800}
+  .dots{flex:0 0 24px; text-align:center; color:var(--muted)}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Binomial의 극한이 Poisson이 되는 이유</h1>
+<p class="sub">
+  확률통계 · Topic 4 보충자료 — 슬라이드 <b>19~20번 (Poisson — 오프너의 답 · Poisson의 정체)</b>
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">슬라이드에서 본 것</span>
+    <b>숫자로 확인한 수렴</b><br>
+    <i>np</i> = 3 을 고정하고 <i>n</i> 을 10 → 50 → 500 으로 키우면
+    Binomial이 Poisson(3)에 점점 겹쳐졌다. 최대 차이가 0.0428 → 0.0070 → 0.0007.
+  </div>
+  <div class="card">
+    <span class="lbl">근데 왜?</span>
+    <b>슬라이드는 그림으로만 보여줬다</b><br>
+    "겹쳐진다"는 눈으로 확인했지만, <b>정확히 어떤 극한 계산이 그 결과를 만드는지</b>는
+    슬라이드 20번에 나오지 않는다.
+  </div>
+  <div class="card">
+    <span class="lbl">이 노트가 하는 일</span>
+    <b>그 극한을 끝까지 계산한다</b><br>
+    <i>n</i> → ∞ 일 때 Binomial PMF가 <b>정확히</b> Poisson PMF가 됨을 보이고,
+    오프너의 질문("왜 평균과 분산이 같은가")에도 답한다.
+  </div>
+</div>
+
+<h2>1. 두 가지 동기 — 이 극한을 왜 보는가</h2>
+
+<p>
+  Poisson을 "새로운 분포"로 외우기보다, <b>Binomial이 어떤 상황에서 저절로 Poisson이 되는지</b>를
+  먼저 보면 왜 이 분포가 그렇게 자주 쓰이는지 알 수 있다. 두 가지 길이 같은 곳으로 간다.
+</p>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">① 드문 사건을 아주 많이 시도한다</span>
+    슬라이드 14번의 광고 클릭 예제 — <b>200명</b>에게 보내고 각자 <b>3%</b> 확률로 클릭한다.
+    "시도 횟수는 많고(<i>n</i>↑), 한 번 성공할 확률은 작다(<i>p</i>↓)"가
+    딱 <b>Poisson이 태어나는 조건</b>이다.
+  </div>
+  <div class="card">
+    <span class="lbl">② 시간을 잘게 쪼갠다</span>
+    "1분당 요청 수"(슬라이드 6번)처럼 <b>연속된 시간</b>을 다루고 싶다면,
+    그 시간을 아주 잘게 쪼개 <b>각 조각을 "사건이 있었다/없었다"의 Bernoulli</b>로 본다.
+    조각을 무한히 잘게 쪼개면(<i>n</i> → ∞) 이것도 같은 극한이 된다.
+  </div>
+</div>
+
+<p>길이 <i>T</i> 인 관찰 구간을 조각 <i>n</i> 개로 나눈다고 하자.</p>
+
+<div class="interval">
+  <div class="cell">1</div><div class="cell">2</div><div class="cell">3</div>
+  <div class="dots">…</div>
+  <div class="cell hit"><i>k</i></div>
+  <div class="dots">…</div>
+  <div class="cell"><i>n</i>−1</div><div class="cell"><i>n</i></div>
+</div>
+
+<p>
+  조각 하나의 길이는 <i>T</i>/<i>n</i> 이다. 사건이 평균 비율 λ(초당 · 분당 등)로 일어난다면,
+  조각 하나에서 사건이 일어날 확률은 대략 <i>p</i> ≈ λ · (<i>T</i>/<i>n</i>) 이다.
+  <i>n</i> 개의 조각을 <b>독립인 Bernoulli(<i>p</i>) 시행</b>으로 보면 사건이 일어난 조각의 개수는
+  <b>Binomial(<i>n</i>, <i>p</i>)</b> 다. 그런데 <i>np</i> = λ<i>T</i> 로 <b>고정</b>돼 있으므로,
+  조각을 잘게 쪼갤수록(<i>n</i> → ∞) <i>p</i> 는 저절로 0 에 가까워진다.
+</p>
+
+<div class="note">
+  <b>⚠️ 조각을 무한히 쪼개는 이유.</b> 조각이 굵으면 한 조각에 사건이 <b>두 번 이상</b> 일어날 수 있어
+  Bernoulli 가정이 깨진다. 슬라이드 19번의 Poisson process 조건 ③("아주 짧은 구간에 두 번 이상
+  일어나지 않는다")이 바로 이 문제를 없애기 위한 것이다 — <b>n → ∞ 가 그 조건을 자동으로 만족시킨다.</b>
+</div>
+
+<h2>2. 극한을 계산으로 끝까지 밀어붙이기</h2>
+
+<p>
+  <i>n</i> → ∞, <i>p</i> → 0 을 <b><i>np</i> = λ</b> 를 고정한 채로 보낸다. 즉 <i>p</i> = λ/<i>n</i> 을
+  Binomial PMF에 그대로 대입한다.
+</p>
+
+<div class="eq">
+  <i>P<sub>X</sub></i>(<i>k</i>) = C(<i>n</i>,<i>k</i>) <i>p<sup>k</sup></i>(1−<i>p</i>)<sup><i>n</i>−<i>k</i></sup>
+  &nbsp;=&nbsp; <span style="color:var(--teal)">C(<i>n</i>,<i>k</i>)</span>
+  <span style="color:var(--orange)">(λ/<i>n</i>)<sup>k</sup></span>
+  <span style="color:var(--pink)">(1 − λ/<i>n</i>)<sup>n−k</sup></span>
+</div>
+
+<p>세 조각으로 나눠 각각 <i>n</i> → ∞ 극한을 본다.</p>
+
+<div class="eq">
+  <span style="color:var(--teal)">C(<i>n</i>,<i>k</i>)</span> · (λ/<i>n</i>)<sup>k</sup>
+  &nbsp;=&nbsp;
+  <span style="color:var(--teal)">
+  <sup>n</sup>&frasl;<sub>n</sub> · <sup>(n−1)</sup>&frasl;<sub>n</sub> · <sup>(n−2)</sup>&frasl;<sub>n</sub> ⋯ <sup>(n−k+1)</sup>&frasl;<sub>n</sub>
+  </span>
+  · λ<sup>k</sup>/<i>k</i>!
+  <br>
+  <span class="cmt">
+    <i>k</i> 는 <b>고정</b>돼 있고 <i>n</i> 만 커진다. 분수 <i>k</i> 개가 전부
+    <b>(큰 수)/(그보다 조금 작은 큰 수) → 1</b> 로 간다. → <b>이 조각 전체가 1로 수렴한다.</b>
+  </span>
+</div>
+
+<div class="eq">
+  (1 − λ/<i>n</i>)<sup>−<i>k</i></sup> &nbsp;→&nbsp; 1
+  <br>
+  <span class="cmt">λ/<i>n</i> → 0 이므로 밑이 1로 가고, 지수 −<i>k</i> 는 고정된 수다.</span>
+</div>
+
+<div class="eq" style="border-left-color:var(--pink)">
+  (1 − λ/<i>n</i>)<sup><i>n</i></sup> &nbsp;→&nbsp; <i>e</i><sup>−λ</sup>
+  <br>
+  <span class="cmt">
+    미적분의 표준 극한이다 — <i>e</i> = lim<sub><i>n</i>→∞</sub> (1 + 1/<i>n</i>)<sup><i>n</i></sup> 을
+    λ 로 재척도한 것과 같은 자리에서 나온다. <b>이 조각만 0으로도, 1로도 가지 않는다</b> —
+    수렴 결과가 상수가 아니라 <i>e</i><sup>−λ</sup> 라는 사실이 Poisson PMF의 <i>e</i><sup>−λ</sup> 를 만든다.
+  </span>
+</div>
+
+<div class="eq" style="border-left-color:var(--accent)">
+  <b>세 조각을 합치면</b><br>
+  lim<sub><i>n</i>→∞</sub> <i>P<sub>X</sub></i>(<i>k</i>) &nbsp;=&nbsp;
+  <b>1</b> · <sup>λ<sup>k</sup></sup>&frasl;<sub><i>k</i>!</sub> · <b><i>e</i><sup>−λ</sup></b> · <b>1</b>
+  &nbsp;=&nbsp;
+  <span style="font-size:19px"><b>λ<sup>k</sup>/<i>k</i>! · <i>e</i><sup>−λ</sup></span></b>
+  <br>
+  <span class="cmt">— 정확히 <b>Poisson(λ)</b> 의 PMF다. 슬라이드 19번에 적힌 그 식이다.</span>
+</div>
+
+<div class="link">
+  <b>⭐ 극한이 정의가 되는 순간.</b> Poisson은 "발명된" 분포가 아니라
+  <b>Binomial을 극한까지 밀어붙이면 저절로 나오는</b> 분포다. 그래서 "드문 사건 + 아주 많은 시도"
+  라는 상황을 만나면 Binomial 대신 Poisson을 써도 되는 것이고, 오히려 <i>n</i> 이 아주 크면
+  Binomial 계산(조합 <code>C(n,k)</code>)보다 Poisson 계산(<code>λᵏ/k!</code>)이 <b>훨씬 가볍다.</b>
+</div>
+
+<h2>3. 숫자로 — 겹쳐지는 속도를 직접 움직여 본다</h2>
+
+<p>
+  슬라이드 20번은 <i>n</i> = 10, 50, 500 세 장면만 보여줬다. 여기서는 슬라이더로
+  <i>n</i> 을 직접 움직이며 <b>Binomial(<i>n</i>, 3/<i>n</i>)</b> 이 <b>Poisson(3)</b> 에
+  얼마나 가까운지 확인할 수 있다.
+</p>
+
+<div class="viz">
+<h3>🔬 시연 — n을 키우면 Binomial이 Poisson(3)에 겹쳐진다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  <i>λ</i> = <i>np</i> = 3 으로 고정한다. <i>n</i> 을 키우면 <i>p</i> = 3/<i>n</i> 은 저절로 작아진다.
+</p>
+
+<div class="sl">
+  <label><i>n</i> <span class="val" id="p-vn">10</span></label>
+  <input type="range" id="p-n" min="5" max="500" value="10" step="1">
+</div>
+
+<canvas id="p-cv" width="900" height="280"></canvas>
+<div class="legend">
+  <span><i class="sw" style="background:var(--teal)"></i> Binomial(n, 3/n) — 막대</span>
+  <span><i class="sw" style="background:var(--ink)"></i> Poisson(3) — 점선</span>
+</div>
+
+<div class="tiles">
+  <div class="tile"><div class="t">n</div><div class="n" id="p-n2">10</div><div class="f">시행 횟수</div></div>
+  <div class="tile"><div class="t">p = λ/n</div><div class="n" id="p-p">0.3000</div><div class="f">한 번 성공할 확률</div></div>
+  <div class="tile hi"><div class="t">최대 차이</div><div class="n" id="p-gap">0.0428</div><div class="f">|Binomial − Poisson|</div></div>
+  <div class="tile"><div class="t">분산 = np(1−p)</div><div class="n" id="p-var">2.1000</div><div class="f">Poisson 분산 = 3.0000</div></div>
+</div>
+</div>
+
+<table>
+  <tr><th>n</th><th class="num">p = λ/n</th><th class="num">최대 차이</th><th>슬라이드 20번 검증값</th></tr>
+  <tr><td>10</td><td class="num">0.3000</td><td class="num">0.0428</td><td>일치</td></tr>
+  <tr><td>50</td><td class="num">0.0600</td><td class="num">0.0070</td><td>일치</td></tr>
+  <tr><td>500</td><td class="num">0.0060</td><td class="num">0.0007</td><td>일치</td></tr>
+</table>
+
+<h2>4. 오프너의 질문에 답하기 — 왜 평균과 분산이 같아지는가</h2>
+
+<p>
+  슬라이드 7번("발견")이 던진 질문을 기억할 것이다 — 서버 로그 10~15시 구간에서
+  <b>평균 8.36, 분산 7.99</b>로 거의 같았다. 이제 그 이유를 정확히 말할 수 있다.
+</p>
+
+<div class="eq">
+  Binomial(<i>n</i>, <i>p</i>) 의 평균 = <i>np</i> = <b>λ</b> (고정)<br>
+  Binomial(<i>n</i>, <i>p</i>) 의 분산 = <i>np</i>(1−<i>p</i>) = λ(1−<i>p</i>)
+  <span class="cmt">← <i>p</i> → 0 이므로 (1−<i>p</i>) → 1</span>
+</div>
+
+<p>
+  <i>n</i> 이 커질수록 <i>p</i> 는 0에 가까워지고, 분산 λ(1−<i>p</i>) 는 평균 λ 에 <b>점점 더 가까워진다.</b>
+  극한에서는 둘이 정확히 같아진다 — <b>Poisson(λ)의 평균과 분산이 둘 다 λ</b> 인 이유다.
+  슬라이드 14번의 관찰(<i>np</i> = 6, <i>np</i>(1−<i>p</i>) = 5.82 — 거의 같다)이
+  바로 이 극한이 완성되기 <b>직전 단계</b>였다.
+</p>
+
+<div class="note">
+  <b>⚠️ 거꾸로도 쓸모가 있다.</b> 데이터의 <b>분산/평균 비율이 1에서 멀면</b>
+  (슬라이드 23번의 overdispersion) "<i>p</i> 가 충분히 작지 않다" 거나
+  "여러 λ 가 섞여 있다"는 신호로 읽을 수 있다.
+</div>
+
+<h2>5. 한 장으로 정리</h2>
+
+<table>
+  <tr><th style="width:230px">Topic 4 슬라이드에서 본 것</th><th>이 노트가 채운 것</th></tr>
+  <tr><td>14번 — 클릭 예제, 평균·분산이 거의 같다</td><td>극한 <b>직전</b> 단계였다는 것을 이제 안다</td></tr>
+  <tr><td>19번 — Poisson PMF λᵏ/k!·e⁻λ</td><td>그 식이 <b>어디서 나왔는지</b> — Binomial의 극한</td></tr>
+  <tr><td>20번 — n=10,50,500 그림으로 확인</td><td>왜 그렇게 되는지 <b>수식으로 증명</b>, 슬라이더로 재확인</td></tr>
+  <tr><td>7번 — "왜 평균과 분산이 같은가?"</td><td><i>p</i> → 0 이면 분산 λ(1−p) → λ = 평균</td></tr>
+</table>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — Poisson은 <b>"드문 사건을 아주 많이 시도한 Binomial의 극한"</b>이다.
+  <i>np</i> = λ 를 고정하고 <i>n</i> → ∞, <i>p</i> → 0 을 보내면 Binomial PMF가 정확히
+  λᵏ/k!·e⁻λ 로 수렴하고, 그 부산물로 평균과 분산이 똑같이 λ 가 된다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 4 슬라이드 19~20번 보충 &nbsp;·&nbsp;
+  Topic 10(LLN·CLT) · Topic 12(MLE, λ̂ = X̄ 의 정당화)에서 이어진다 &nbsp;·&nbsp;
+  시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const cv = $("p-cv"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  const LAM = 3, KMAX = 12;
+  const PAD_L = 44, PAD_B = 34, PAD_T = 14, PAD_R = 14;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+
+  function poissonPMF(lambda, kmax){
+    const arr = [Math.exp(-lambda)];
+    for (let k = 1; k <= kmax; k++) arr.push(arr[k-1] * lambda / k);
+    return arr;
+  }
+  function binomPMF(n, p, kmax){
+    const q = 1 - p;
+    const arr = [Math.pow(q, n)];
+    for (let k = 1; k <= kmax; k++) arr.push(arr[k-1] * (n - k + 1) / k * p / q);
+    return arr;
+  }
+
+  function draw(){
+    const n = +$("p-n").value;
+    const p = LAM / n;
+    const bin = binomPMF(n, p, KMAX);
+    const pois = poissonPMF(LAM, KMAX);
+    const gap = Math.max(...bin.map((v, i) => Math.abs(v - pois[i])));
+
+    $("p-vn").textContent = n;
+    $("p-n2").textContent = n;
+    $("p-p").textContent = p.toFixed(4);
+    $("p-gap").textContent = gap.toFixed(4);
+    $("p-var").textContent = (n * p * (1 - p)).toFixed(4);
+
+    ctx.clearRect(0, 0, W, H);
+
+    const ymax = Math.max(0.32, Math.max(...bin), Math.max(...pois)) * 1.08;
+    const px = k => PAD_L + (k + 0.5) / (KMAX + 1) * plotW;
+    const py = v => PAD_T + plotH - (v / ymax) * plotH;
+    const bw = plotW / (KMAX + 1) * 0.62;
+
+    // y축 눈금
+    ctx.strokeStyle = css("--line"); ctx.fillStyle = css("--muted");
+    ctx.font = "11px Consolas, monospace"; ctx.textAlign = "right";
+    for (let t = 0; t <= 0.3; t += 0.1) {
+      const y = py(t);
+      ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(W - PAD_R, y); ctx.stroke();
+      ctx.fillText(t.toFixed(1), PAD_L - 6, y + 4);
+    }
+
+    // x축 라벨
+    ctx.textAlign = "center"; ctx.fillStyle = css("--muted");
+    for (let k = 0; k <= KMAX; k += 2) ctx.fillText(k, px(k), H - PAD_B + 16);
+
+    // Binomial 막대
+    ctx.fillStyle = css("--teal");
+    for (let k = 0; k <= KMAX; k++) {
+      const x = px(k) - bw / 2, y = py(bin[k]);
+      ctx.fillRect(x, y, bw, PAD_T + plotH - y);
+    }
+
+    // Poisson 점선 + 점
+    ctx.strokeStyle = css("--ink"); ctx.fillStyle = css("--ink");
+    ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    for (let k = 0; k <= KMAX; k++) {
+      const x = px(k), y = py(pois[k]);
+      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+    for (let k = 0; k <= KMAX; k++) {
+      ctx.beginPath(); ctx.arc(px(k), py(pois[k]), 3.2, 0, 7); ctx.fill();
+    }
+  }
+
+  $("p-n").addEventListener("input", draw);
+  draw();
+})();
+</script>
+</body>
+</html>

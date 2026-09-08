@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Softmax — 실수 벡터를 확률분포로</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cmt{color:var(--muted); font-size:14px}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .sl{margin-bottom:12px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start}
+  @media (max-width:760px){ .grid2{grid-template-columns:1fr} }
+  .tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft); text-align:center}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:22px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  canvas{max-width:100%; display:block}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(3,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Softmax — 실수 벡터를 확률분포로 바꾸는 함수</h1>
+<p class="sub">
+  확률통계 · Topic 4 보충자료 — 슬라이드 <b>22번 (Categorical — 여러 갈래)</b>
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">슬라이드에서 본 것</span>
+    <b>"softmax는 실수 벡터를 Categorical의 모수로 바꾸는 함수다"</b><br>
+    한 문장으로만 지나갔다. 정작 그 식이 어떻게 생겼는지는 안 나왔다.
+  </div>
+  <div class="card">
+    <span class="lbl">이 노트가 답하는 것</span>
+    softmax의 식, <b>왜 항상 확률이 되는지</b>, <i>K</i>=2 일 때 <b>왜 정확히 Bernoulli(sigmoid)가
+    되는지</b>(슬라이드가 던진 "K=2면 Bernoulli다"를 실제로 증명한다), 그리고 <b>temperature</b>가
+    확신을 어떻게 조절하는지.
+  </div>
+  <div class="card">
+    <span class="lbl">다음 Topic</span>
+    Topic 5에서 이 확률분포에 <code>−log(정답 확률)</code> 을 붙인
+    <b>cross-entropy</b>가 분류 모델의 손실함수가 된다.
+  </div>
+</div>
+
+<h2>1. 정의 — 왜 항상 확률이 되는가</h2>
+
+<p>
+  신경망의 마지막 층은 클래스마다 실수 하나씩, <b>로짓(logit)</b> 벡터
+  <i>z</i> = (<i>z</i><sub>1</sub>, …, <i>z<sub>K</sub></i>) 를 내놓는다. 이 값은 음수일 수도,
+  10보다 클 수도 있다 — <b>확률이 아니다.</b> softmax는 이 벡터를 확률분포로 바꾼다.
+</p>
+
+<div class="eq">
+  softmax(<i>z</i>)<sub><i>k</i></sub> &nbsp;=&nbsp;
+  <span style="font-size:19px">
+  <sup><i>e<sup>z<sub>k</sub></sup></i></sup> ⁄ <sub>Σ<sub><i>j</i>=1..<i>K</i></sub> <i>e<sup>z<sub>j</sub></sup></i></sub>
+  </span>
+</div>
+
+<p>이 식이 <b>확률분포의 두 조건</b>을 자동으로 만족시킨다.</p>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">① 전부 0 이상</span>
+    <i>e<sup>x</sup></i> 는 <i>x</i> 가 아무리 음수여도 <b>항상 양수</b>다.
+    분자·분모 모두 양수의 합이므로 결과도 항상 양수다.
+  </div>
+  <div class="card">
+    <span class="lbl">② 합이 정확히 1</span>
+    분자를 <i>k</i> 에 대해 다 더하면 분모와 <b>똑같아진다.</b> 그래서
+    Σ<sub><i>k</i></sub> softmax(<i>z</i>)<sub><i>k</i></sub> = 1.
+  </div>
+</div>
+
+<p>
+  이 두 조건이 바로 슬라이드 22번의 Categorical 정의 — "<i>K</i>개 중 하나, Σ<i>p<sub>k</sub></i> = 1" —
+  가 요구하는 전부다. <b>softmax는 그 조건을 만족하는 <i>p</i><sub>1</sub>, …, <i>p<sub>K</sub></i> 를
+  로짓으로부터 만들어 내는 함수다.</b>
+</p>
+
+<h2>2. 숫자로 확인</h2>
+
+<p>
+  이미지가 <b>개/고양이/새</b> 중 하나로 분류된다고 하자(슬라이드 22번 예시). 모델이 내놓은
+  로짓이 <i>z</i> = (2, 1, −1) 이라면:
+</p>
+
+<div class="eq">
+  <i>e</i><sup>2</sup> ≈ 7.389 &nbsp;·&nbsp; <i>e</i><sup>1</sup> ≈ 2.718 &nbsp;·&nbsp;
+  <i>e</i><sup>−1</sup> ≈ 0.368 &nbsp;·&nbsp; 합 ≈ 10.475
+  <br><br>
+  softmax(2, 1, −1) = (<b>0.7054</b>, <b>0.2595</b>, <b>0.0351</b>)
+  <span class="cmt">— 개 70.5% · 고양이 26.0% · 새 3.5%. 합은 정확히 1.0000.</span>
+</div>
+
+<p>
+  <b>가장 큰 로짓이 가장 큰 확률을 받는다</b>(2 → 70.5%)는 것과, <b>차이가 지수적으로 벌어진다</b>는 것
+  — 로짓 차이 1당 약 <i>e</i> ≈ 2.7배 — 을 눈여겨볼 만하다.
+</p>
+
+<div class="viz">
+<h3>🔬 시연 — 로짓 세 개를 직접 움직여 본다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  개·고양이·새의 로짓을 슬라이더로 바꾸면 오른쪽 막대(확률)가 바로 바뀐다.
+  맨 아래 <b>temperature</b> 슬라이더는 3절에서 다룬다.
+</p>
+
+<div class="grid2">
+<div>
+  <div class="sl">
+    <label>🐶 개 로짓 z₁ <span class="val" id="s-vz1">2.0</span></label>
+    <input type="range" id="s-z1" min="-5" max="5" step="0.1" value="2">
+  </div>
+  <div class="sl">
+    <label>🐱 고양이 로짓 z₂ <span class="val" id="s-vz2">1.0</span></label>
+    <input type="range" id="s-z2" min="-5" max="5" step="0.1" value="1">
+  </div>
+  <div class="sl">
+    <label>🐦 새 로짓 z₃ <span class="val" id="s-vz3">-1.0</span></label>
+    <input type="range" id="s-z3" min="-5" max="5" step="0.1" value="-1">
+  </div>
+  <div class="sl" style="margin-top:20px">
+    <label>온도 T (작을수록 확신, 클수록 균등) <span class="val" id="s-vt">1.00</span></label>
+    <input type="range" id="s-t" min="0.2" max="5" step="0.05" value="1">
+  </div>
+</div>
+<div>
+  <canvas id="s-cv" width="420" height="260"></canvas>
+</div>
+</div>
+
+<div class="tiles">
+  <div class="tile hi"><div class="t">P(개)</div><div class="n" id="s-p1">0.7054</div></div>
+  <div class="tile hi"><div class="t">P(고양이)</div><div class="n" id="s-p2">0.2595</div></div>
+  <div class="tile hi"><div class="t">P(새)</div><div class="n" id="s-p3">0.0351</div></div>
+</div>
+</div>
+
+<h2>3. <i>K</i> = 2 이면 왜 정확히 Bernoulli(sigmoid)인가</h2>
+
+<p>
+  슬라이드 22번의 정의 박스는 "<i>K</i> = 2 이면 Bernoulli다"라고 못박아 뒀다.
+  softmax로 직접 확인해 보자. 클래스가 둘, 로짓이 <i>z</i><sub>1</sub>, <i>z</i><sub>2</sub> 다.
+</p>
+
+<div class="eq">
+  softmax(<i>z</i>)<sub>1</sub> &nbsp;=&nbsp;
+  <sup><i>e<sup>z<sub>1</sub></sup></i></sup> ⁄ <sub><i>e<sup>z<sub>1</sub></sup></i> + <i>e<sup>z<sub>2</sub></sup></i></sub>
+  &nbsp;=&nbsp;
+  <sup>1</sup> ⁄ <sub>1 + <i>e</i><sup>−(<i>z</i><sub>1</sub>−<i>z</i><sub>2</sub>)</sup></sub>
+  &nbsp;=&nbsp; <b>σ(<i>z</i><sub>1</sub> − <i>z</i><sub>2</sub>)</b>
+  <br>
+  <span class="cmt">분자·분모를 <i>e<sup>z<sub>1</sub></sup></i> 로 나누면 로지스틱 시그모이드 σ 가 그대로 나온다.</span>
+</div>
+
+<p>
+  즉 <b>두 로짓의 "차이"만 결과를 정한다.</b> (2, 1) 이든 (102, 101) 이든 확률은 똑같다.
+  숫자로 확인하면:
+</p>
+
+<div class="eq">
+  <i>z</i><sub>1</sub>=2, <i>z</i><sub>2</sub>=1 일 때 &nbsp;
+  softmax<sub>1</sub> = <b>0.731059</b> &nbsp;=&nbsp; σ(2−1) = <b>0.731059</b>
+  <span class="cmt">— 소수점 여섯 자리까지 일치</span>
+</div>
+
+<div class="link">
+  <b>⭐ 그래서 이진 분류에서는 sigmoid 하나만 쓴다.</b> 클래스가 둘뿐이면 로짓도 하나
+  (<i>z</i> = <i>z</i><sub>1</sub> − <i>z</i><sub>2</sub>)만 계산해도 충분하다 — softmax 두 칸을
+  들고 다닐 필요가 없다. 반대로 <b>Bernoulli는 Categorical의 <i>K</i>=2 특수 case</b>라는
+  슬라이드 22번의 문장이 여기서 정확히 증명된다.
+</div>
+
+<h2>4. Temperature — 확신을 조절하는 손잡이</h2>
+
+<p>
+  softmax(<i>z</i>/<i>T</i>) 처럼 로짓을 <i>T</i> 로 나누고 넣으면, 확률이 얼마나 "확신에 찬" 모양이
+  되는지를 조절할 수 있다. 위 시연의 <b>온도 슬라이더</b>를 움직이며 아래 표와 비교해 보라.
+</p>
+
+<table>
+  <tr><th>T</th><th class="num">P(개)</th><th class="num">P(고양이)</th><th class="num">P(새)</th><th>모양</th></tr>
+  <tr><td><b>0.3</b> — 낮다</td><td class="num">0.9655</td><td class="num">0.0344</td><td class="num">0.0000</td>
+      <td>거의 <b>one-hot</b> — 가장 큰 로짓이 확률을 독식</td></tr>
+  <tr><td>1.0 — 원래 로짓</td><td class="num">0.7054</td><td class="num">0.2595</td><td class="num">0.0351</td>
+      <td>기본 softmax</td></tr>
+  <tr><td><b>5.0</b> — 높다</td><td class="num">0.4224</td><td class="num">0.3458</td><td class="num">0.2318</td>
+      <td>거의 <b>균등분포</b>로 뭉개진다</td></tr>
+</table>
+
+<div class="eq">
+  <i>T</i> → 0<sup>+</sup> &nbsp;⟹&nbsp; argmax 로짓이 확률 1을 가져간다 (one-hot)<br>
+  <i>T</i> → ∞ &nbsp;⟹&nbsp; 모든 확률이 1/<i>K</i> 로 같아진다 (균등분포)
+  <span class="cmt">— 로짓 차이가 상대적으로 0에 가까워지기 때문이다</span>
+</div>
+
+<div class="note">
+  <b>⚠️ 학습(training)의 softmax와 생성(generation)의 temperature는 같은 식이다.</b>
+  언어모델이 "다음 토큰"을 뽑을 때 temperature를 낮추면 안전한(가장 그럴듯한) 답을,
+  높이면 다양하고 의외의 답을 낸다 — 지금 본 <i>T</i> → 0 / <i>T</i> → ∞ 양극단이
+  바로 그 조절 메커니즘이다.
+</div>
+
+<h2>5. 한 장으로 정리</h2>
+
+<table>
+  <tr><th style="width:230px">Topic 4 슬라이드 22번</th><th>이 노트가 채운 것</th></tr>
+  <tr><td>"softmax는 실수 벡터를 모수로 바꾼다"</td><td>정확한 식과, 왜 항상 확률이 되는지(합=1, 전부≥0)</td></tr>
+  <tr><td>"K=2면 Bernoulli다"</td><td>softmax₁ = σ(z₁−z₂) 라는 <b>직접 증명</b></td></tr>
+  <tr><td>(다루지 않음)</td><td>temperature — one-hot ↔ 균등분포 사이를 조절하는 손잡이</td></tr>
+  <tr><td>"Topic 5에서 cross-entropy를 붙인다"</td><td>이 확률에 −log 를 씌우는 것이 다음 Topic</td></tr>
+</table>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — softmax는 <b>로짓의 차이를 지수함수로 확대해 확률로 바꾸는 함수</b>다.
+  <i>K</i>=2 이면 sigmoid와 정확히 같고, temperature로 그 확신의 정도를 조절할 수 있다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 4 슬라이드 22번 보충 &nbsp;·&nbsp;
+  Topic 5(cross-entropy)에서 이어진다 &nbsp;·&nbsp;
+  시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const cv = $("s-cv"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const LABELS = ["개", "고양이", "새"];
+  const COLORS = [() => css("--accent"), () => css("--teal"), () => css("--orange")];
+
+  function softmax(z, T){
+    const zt = z.map(v => v / T);
+    const m = Math.max(...zt);
+    const ez = zt.map(v => Math.exp(v - m));
+    const s = ez.reduce((a, b) => a + b, 0);
+    return ez.map(v => v / s);
+  }
+
+  function draw(){
+    const z = [+$("s-z1").value, +$("s-z2").value, +$("s-z3").value];
+    const T = +$("s-t").value;
+    $("s-vz1").textContent = z[0].toFixed(1);
+    $("s-vz2").textContent = z[1].toFixed(1);
+    $("s-vz3").textContent = z[2].toFixed(1);
+    $("s-vt").textContent = T.toFixed(2);
+
+    const p = softmax(z, T);
+    $("s-p1").textContent = p[0].toFixed(4);
+    $("s-p2").textContent = p[1].toFixed(4);
+    $("s-p3").textContent = p[2].toFixed(4);
+
+    ctx.clearRect(0, 0, W, H);
+    const PAD_L = 40, PAD_B = 30, PAD_T = 14, PAD_R = 14;
+    const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+
+    // y축 눈금 0~1
+    ctx.strokeStyle = css("--line"); ctx.fillStyle = css("--muted");
+    ctx.font = "11px Consolas, monospace"; ctx.textAlign = "right";
+    for (let t = 0; t <= 1.0001; t += 0.25) {
+      const y = PAD_T + plotH - t * plotH;
+      ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(W - PAD_R, y); ctx.stroke();
+      ctx.fillText(t.toFixed(2), PAD_L - 6, y + 4);
+    }
+
+    const bw = plotW / 3 * 0.5;
+    for (let i = 0; i < 3; i++) {
+      const cx = PAD_L + plotW * (i + 0.5) / 3;
+      const barH = p[i] * plotH;
+      const y = PAD_T + plotH - barH;
+      ctx.fillStyle = COLORS[i]();
+      ctx.fillRect(cx - bw / 2, y, bw, barH);
+      ctx.fillStyle = css("--ink");
+      ctx.font = "bold 13px 'Malgun Gothic', sans-serif"; ctx.textAlign = "center";
+      ctx.fillText((p[i] * 100).toFixed(1) + "%", cx, y - 8);
+      ctx.font = "13px 'Malgun Gothic', sans-serif";
+      ctx.fillText(LABELS[i], cx, H - PAD_B + 18);
+    }
+  }
+
+  ["s-z1", "s-z2", "s-z3", "s-t"].forEach(id => $(id).addEventListener("input", draw));
+  draw();
+})();
+</script>
+</body>
+</html>

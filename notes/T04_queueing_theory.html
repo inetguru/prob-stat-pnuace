@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Queueing Theory — 기다리는 줄을 수학으로</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cmt{color:var(--muted); font-size:14px}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft); text-align:center}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:20px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile .f{font-size:11px; color:var(--muted)}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  .tile.warn{border-color:var(--orange); background:#fdf1e3}
+  canvas{max-width:100%; display:block}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Queueing Theory — 기다리는 줄을 수학으로</h1>
+<p class="sub">
+  확률통계 · Topic 4 보충자료 — 슬라이드 <b>27번 (→AI 연결점 · 시스템)</b>
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">슬라이드에서 본 것</span>
+    <b>"용량 산정이 Poisson 위에서 이뤄진다"</b><br>
+    한 줄로 지나갔다. <b>어떻게</b> 이뤄지는지는 안 나왔다.
+  </div>
+  <div class="card">
+    <span class="lbl">이 노트가 답하는 것</span>
+    도착이 Poisson이면 <b>대기시간·큐 길이</b>를 계산하는 공식이 정확히 어떤 모양인지,
+    그리고 왜 서버가 조금만 바빠져도 대기가 <b>폭발적으로</b> 길어지는지.
+  </div>
+  <div class="card">
+    <span class="lbl">어디서 이어지는가</span>
+    슬라이드 6번의 <b>서버 로그 자체가 큐잉 시스템</b>이다. 도착은 오늘 배운 Poisson,
+    서비스 시간은 <b>Topic 6의 지수분포</b>, 대기행렬 자체는 <b>Topic 15의 Markov chain</b>이다.
+  </div>
+</div>
+
+<h2>1. 표기 — M/M/1</h2>
+
+<p>
+  Queueing Theory는 <b>Kendall 표기법</b> <code>A/S/c</code>로 시스템을 요약한다 —
+  <b>A</b>(도착 과정) / <b>S</b>(서비스 시간 분포) / <b>c</b>(서버 개수). 가장 기본형이 <b>M/M/1</b>이다.
+</p>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">M — Markovian</span>
+    <b>도착이 Poisson process다</b><br>
+    "다음 요청이 언제 올지"가 지금까지 몇 명이 왔는지와 무관하다 — <b>memoryless</b>.
+    오늘 배운 Poisson(λ)이 정확히 이 조건이다.
+  </div>
+  <div class="card">
+    <span class="lbl">M — 서비스도 Markovian</span>
+    <b>처리 시간도 memoryless</b>다 — <b>지수분포(Exponential)</b>를 따른다.
+    "얼마나 처리했든 남은 시간의 분포는 같다." (Topic 6에서 증명)
+  </div>
+</div>
+
+<p><b>1</b>은 서버가 한 대라는 뜻이다. 두 개의 비율만 알면 시스템 전체가 결정된다.</p>
+
+<div class="eq">
+  <b>λ (lambda)</b> — 도착률: 단위 시간당 평균 몇 건이 오는가 (오늘 배운 그 λ)<br>
+  <b>μ (mu)</b> — 서비스율: 서버 한 대가 단위 시간당 평균 몇 건을 처리하는가<br>
+  <b>ρ (rho) = λ/μ</b> — <b>이용률(utilization)</b>: 서버가 얼마나 바쁜가
+</div>
+
+<div class="note">
+  <b>⚠️ 안정성 조건: ρ &lt; 1.</b> 서버가 처리하는 속도(μ)보다 요청이 오는 속도(λ)가 빠르면
+  (ρ ≥ 1) 큐는 <b>영원히 쌓이기만 한다.</b> 아래 공식들은 전부 ρ &lt; 1을 전제로 한다.
+</div>
+
+<h2>2. 핵심 결과 — 얼마나 기다리는가</h2>
+
+<p>
+  M/M/1의 <b>평균 큐 안 고객 수</b>와 <b>평균 대기시간</b>은 놀랍도록 짧은 식으로 정리된다.
+</p>
+
+<div class="eq">
+  <b>평균 시스템 내 고객 수</b> &nbsp;&nbsp; <i>L</i> = ρ / (1 − ρ)<br>
+  <b>평균 대기시간(체류시간)</b> &nbsp;&nbsp; <i>W</i> = 1 / (μ − λ)
+</div>
+
+<div class="link">
+  <b>⭐ Little's Law — 큐잉 이론에서 가장 유명한 한 줄.</b>
+  <i>L</i> = λ · <i>W</i>. "평균적으로 줄에 몇 명이 있는가"는 "도착률 × 한 사람이 머무는 시간"과
+  <b>항상</b> 같다 — M/M/1뿐 아니라 <b>어떤 큐잉 시스템에도 성립하는 일반 법칙</b>이다.
+  위의 두 공식이 실제로 이 관계를 만족하는지 <i>L</i> = λ<i>W</i> = λ/(μ−λ) = (λ/μ)/(1−λ/μ) = ρ/(1−ρ) 로
+  직접 확인할 수 있다.
+</div>
+
+<h2>3. 숫자로 — 서버 로그를 그대로 넣어 본다</h2>
+
+<p>
+  오늘 슬라이드 6번의 서버가 <b>1분당 평균 8건</b>(λ=8)을 받고, <b>1분당 10건</b>을
+  처리할 수 있다(μ=10)고 하자.
+</p>
+
+<div class="eq">
+  ρ = 8/10 = <b>0.8</b> (80% 가동)<br>
+  <i>L</i> = 0.8/0.2 = <b>4명</b>이 시스템 안에(대기+처리 중) 평균적으로 있다<br>
+  <i>W</i> = 1/(10−8) = <b>0.5분(30초)</b>을 평균적으로 머문다
+</div>
+
+<h3>그런데 ρ가 1에 가까워지면?</h3>
+
+<table>
+  <tr><th>λ</th><th class="num">ρ = λ/μ</th><th class="num"><i>L</i></th><th class="num"><i>W</i>(분)</th><th>체감</th></tr>
+  <tr><td>8</td><td class="num">0.80</td><td class="num">4.0</td><td class="num">0.50</td><td>여유 있음</td></tr>
+  <tr><td>9</td><td class="num">0.90</td><td class="num">9.0</td><td class="num">1.00</td><td>대기시간 2배</td></tr>
+  <tr><td>9.5</td><td class="num">0.95</td><td class="num">19.0</td><td class="num">2.00</td><td>고객 수 거의 5배</td></tr>
+  <tr><td>9.9</td><td class="num">0.99</td><td class="num">99.0</td><td class="num">10.00</td><td><b>서비스율의 1% 여유만 남아도 폭발</b></td></tr>
+</table>
+
+<div class="viz">
+<h3>🔬 시연 — 서버를 조금만 더 바쁘게 만들어 본다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  μ(서비스율)는 <b>분당 10건</b>으로 고정한다. λ(도착률) 슬라이더를 오른쪽 끝까지 밀어
+  ρ가 1에 다가갈 때 대기시간이 어떻게 되는지 보라.
+</p>
+
+<div class="sl">
+  <label>λ — 도착률 (건/분) <span class="val" id="q-vl">8.0</span></label>
+  <input type="range" id="q-l" min="1" max="9.9" step="0.1" value="8">
+</div>
+
+<canvas id="q-cv" width="900" height="240"></canvas>
+
+<div class="tiles">
+  <div class="tile"><div class="t">ρ = λ/μ</div><div class="n" id="q-rho">0.800</div><div class="f">이용률</div></div>
+  <div class="tile hi"><div class="t">L (Little's Law)</div><div class="n" id="q-L">4.00</div><div class="f">평균 시스템 내 인원</div></div>
+  <div class="tile hi"><div class="t">W = L/λ</div><div class="n" id="q-W">0.50</div><div class="f">평균 대기시간(분)</div></div>
+  <div class="tile warn"><div class="t">여유(μ−λ)</div><div class="n" id="q-slack">2.00</div><div class="f">이 값이 0에 가까울수록 위험</div></div>
+</div>
+</div>
+
+<div class="note">
+  <b>⚠️ 실무의 교훈 — "평균 80%면 안전하다"는 착각.</b>
+  1/(1−ρ) 꼴의 식은 ρ=0.5→0.9로 늘 때보다 <b>ρ=0.9→0.99로 늘 때 훨씬 가파르게</b> 커진다.
+  그래서 실무에서는 서버를 <b>평균 이용률 100%에 채우지 않고</b> 여유 용량을 남겨 둔다 —
+  "여유 있어 보이는 20~30%"가 사실은 폭발을 막는 안전판이다.
+</div>
+
+<h2>4. 오늘 배운 것과의 연결</h2>
+
+<table>
+  <tr><th style="width:230px">오늘(Topic 4) 배운 것</th><th>Queueing Theory에서 이렇게 쓰인다</th></tr>
+  <tr><td>Poisson(λ) — 사건의 횟수</td><td>도착 과정의 <b>M</b> — 단위시간당 도착 건수가 Poisson(λ)</td></tr>
+  <tr><td>슬라이드 20번 — Binomial의 극한</td><td>극한 관점 자체가 "드문 사건을 계속 관찰"하는 큐잉의 세계관과 같다</td></tr>
+  <tr><td>슬라이드 6번 서버 로그</td><td>바로 이 노트의 λ=8, μ=10 예제의 원본 데이터</td></tr>
+</table>
+
+<div class="link">
+  <b>⭐ 앞으로 두 번 더 만난다.</b> Topic 6(연속 RV)에서 <b>도착 간격이 왜 지수분포인지</b>를
+  증명하고, Topic 15(Markov 맛보기)에서 <b>큐의 길이 자체가 Markov chain</b>이라는 것을 본다 —
+  이 노트의 <i>L</i>, <i>W</i> 공식이 그 Markov chain의 정상분포(stationary distribution)에서 나온다.
+</div>
+
+<h2>5. 한 장으로 정리</h2>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — 도착이 Poisson(λ)이고 서비스가 지수(μ)면(M/M/1),
+  평균 대기시간은 <b>W = 1/(μ−λ)</b>다. ρ = λ/μ 가 1에 가까워질수록 이 값은
+  <b>폭발적으로</b> 커진다 — "조금 더 바쁜 정도"가 "훨씬 더 오래 기다림"이 되는 이유다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 4 슬라이드 27번 보충 &nbsp;·&nbsp;
+  Topic 6(지수분포) · Topic 15(Markov chain)에서 이어진다 &nbsp;·&nbsp;
+  시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const cv = $("q-cv"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  const MU = 10;
+  const PAD_L = 46, PAD_B = 32, PAD_T = 14, PAD_R = 14;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+  const RHO_MAX = 0.99, WMAX = 1 / (MU * (1 - RHO_MAX)); // 곡선 y 상한
+
+  function px(rho){ return PAD_L + (rho / RHO_MAX) * plotW; }
+  function py(w){ return PAD_T + plotH - Math.min(w, WMAX) / WMAX * plotH; }
+
+  function draw(){
+    const lam = +$("q-l").value;
+    const rho = lam / MU;
+    const L = rho / (1 - rho);
+    const Wt = 1 / (MU - lam);
+    const slack = MU - lam;
+
+    $("q-vl").textContent = lam.toFixed(1);
+    $("q-rho").textContent = rho.toFixed(3);
+    $("q-L").textContent = L.toFixed(2);
+    $("q-W").textContent = Wt.toFixed(2);
+    $("q-slack").textContent = slack.toFixed(2);
+
+    ctx.clearRect(0, 0, W, H);
+
+    // 격자 + y축 라벨
+    ctx.strokeStyle = css("--line"); ctx.fillStyle = css("--muted");
+    ctx.font = "11px Consolas, monospace"; ctx.textAlign = "right";
+    for (let t = 0; t <= WMAX + 1e-9; t += WMAX / 4) {
+      const y = py(t);
+      ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(W - PAD_R, y); ctx.stroke();
+      ctx.fillText(t.toFixed(1), PAD_L - 6, y + 4);
+    }
+    ctx.textAlign = "center";
+    for (let r = 0; r <= RHO_MAX + 1e-9; r += 0.2) {
+      ctx.fillText(r.toFixed(1), px(r), H - PAD_B + 16);
+    }
+    ctx.fillStyle = css("--body"); ctx.font = "12px 'Malgun Gothic', sans-serif";
+    ctx.fillText("이용률 ρ = λ/μ  →", W / 2, H - 4);
+
+    // W(ρ) = 1/(μ(1-ρ)) 곡선
+    ctx.strokeStyle = css("--accent"); ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let i = 0; i <= 200; i++) {
+      const r = (RHO_MAX * i) / 200;
+      const w = 1 / (MU * (1 - r));
+      const x = px(r), y = py(w);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // 현재 위치 마커
+    const cx = px(rho), cy = py(Wt);
+    ctx.fillStyle = css("--pink");
+    ctx.beginPath(); ctx.arc(cx, cy, 6, 0, 7); ctx.fill();
+    ctx.strokeStyle = css("--pink"); ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(cx, PAD_T); ctx.lineTo(cx, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD_L, cy); ctx.lineTo(cx, cy); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  $("q-l").addEventListener("input", draw);
+  draw();
+})();
+</script>
+</body>
+</html>
