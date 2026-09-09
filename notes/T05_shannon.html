@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Shannon과 엔트로피</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cmt{color:var(--muted); font-size:14px}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .sl{margin-bottom:12px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start}
+  @media (max-width:760px){ .grid2{grid-template-columns:1fr} }
+  .tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft); text-align:center}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:22px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  canvas{max-width:100%; display:block}
+  .port{float:right; width:210px; margin:0 0 18px 24px; border:1px solid var(--line);
+        border-radius:10px; padding:14px; background:var(--soft); font-size:13px; text-align:center}
+  .port .big{font-size:44px; line-height:1.1; margin-bottom:6px}
+  .port b{display:block; color:var(--ink); font-size:14px; margin-bottom:2px}
+  @media (max-width:760px){ .port{float:none; width:auto; margin:0 0 18px} }
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(3,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Claude Shannon과 엔트로피 — 정보를 재는 단위를 만든 사람</h1>
+<p class="sub">
+  확률통계 · Topic 5 보충자료 — 슬라이드 <b>1번 (Entropy)</b> · <b>9–13번 (self-information · 엔트로피)</b>
+</p>
+
+<div class="port">
+  <div class="big">📡</div>
+  <b>Claude E. Shannon</b>
+  1916 미시간 &ndash; 2001<br>
+  MIT 석사(1937) · 박사(1940)<br>
+  Bell Labs 1941&ndash;1956<br>
+  MIT 교수 1956&ndash;1978
+</div>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">수업에서 나온 질문</span>
+    "엔트로피 개념의 <b>창시자가 Shannon인가?</b>" — 반은 맞고 반은 아니다.
+  </div>
+  <div class="card">
+    <span class="lbl">이 노트가 답하는 것</span>
+    Shannon이 누구이고 <b>1948년 논문</b>이 무엇을 만들었는지, 그리고 "entropy"라는
+    말과 식이 <b>열역학에서 어떻게 건너왔는지</b>.
+  </div>
+  <div class="card">
+    <span class="lbl">한 줄로</span>
+    <b>용어·개념은 Clausius·Boltzmann(열역학), 정보의 척도로 다시 세운 사람이 Shannon</b>이다.
+    이 과목이 다루는 것은 후자다.
+  </div>
+</div>
+
+<h2>1. Claude Shannon — "정보이론의 아버지"</h2>
+
+<p>
+  Shannon은 <b>정보(information)를 수학적으로 정의할 수 있는 양</b>으로 만든 사람이다. 그전까지
+  "정보"는 막연한 말이었는데, Shannon 이후로는 <b>bit 단위로 재고, 압축의 한계를 계산하고,
+  잡음이 있는 통신로의 용량을 공식으로 쓸 수 있는 대상</b>이 되었다.
+</p>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">석사논문 1937</span>
+    <i>A Symbolic Analysis of Relay and Switching Circuits</i>.
+    <b>불 대수(Boolean algebra)로 전기 스위치 회로를 설계</b>할 수 있음을 보였다.
+    오늘날 모든 디지털 회로 설계의 출발점 — "20세기 가장 중요한 석사논문"으로 불린다.
+  </div>
+  <div class="card">
+    <span class="lbl">정보이론 논문 1948</span>
+    <i>A Mathematical Theory of Communication</i> (<i>Bell System Technical Journal</i>).
+    <b>이 한 편이 정보이론이라는 분야를 통째로 만들었다.</b> 이듬해 Warren Weaver의 해설을 붙여
+    단행본으로 나왔다.
+  </div>
+  <div class="card">
+    <span class="lbl">암호학 1949</span>
+    <i>Communication Theory of Secrecy Systems</i>. 전시 암호 연구를 공개판으로 정리했고,
+    <b>one-time pad가 수학적으로 완벽하게 안전함</b>을 증명했다. 2차대전 중 Bell Labs에서
+    Alan Turing과 차를 마시며 토론했다는 일화가 있다.
+  </div>
+  <div class="card">
+    <span class="lbl">그 밖에</span>
+    표본화 정리(Nyquist&ndash;Shannon), 컴퓨터 체스 프로그램의 최초 논문(1950),
+    미로를 스스로 학습해 빠져나오는 기계 쥐 <b>"Theseus"</b>(1950) — 초창기 기계학습 시연.
+    저글링·외발자전거로도 유명했다.
+  </div>
+</div>
+
+<div class="note">
+  <b>bit이라는 단어.</b> "binary digit"의 축약으로 <b>bit</b>을 제안한 사람은 동료 수학자
+  John W. Tukey이고, 그것을 <b>1948년 논문에서 처음 활자로 쓴 사람이 Shannon</b>이다.
+  오늘 슬라이드에서 "질문 몇 번으로 알아내는가 = 몇 bit"이라고 말할 때의 그 단위다.
+</div>
+
+<h2>2. 1948년 논문이 만든 것</h2>
+
+<p>
+  Shannon은 <b>모든 통신을 하나의 그림</b>으로 그렸다 —
+  <code>정보원 → 부호기 → (잡음) 통신로 → 복호기 → 수신자</code>.
+  그리고 이 그림 위에서 세 가지를 정의하고 증명했다.
+</p>
+
+<table>
+  <tr><th style="width:210px">개념</th><th>내용</th><th style="width:150px">이 과목에서</th></tr>
+  <tr>
+    <td><b>Entropy</b> <i>H</i></td>
+    <td>정보원이 만들어 내는 <b>평균 불확실성</b>. 정보원을 부호로 옮길 때
+        <b>평균 부호 길이의 하한</b>이다.</td>
+    <td>Topic 5 전체</td>
+  </tr>
+  <tr>
+    <td><b>Source coding theorem</b><br>(무잡음 부호화 정리)</td>
+    <td>기호당 평균 <i>H</i> bits보다 짧게 압축할 수는 없다. 그리고 <i>H</i>에
+        <b>얼마든지 가깝게</b> 만들 수 있다.</td>
+    <td>Topic 5 — gzip 실험 / Huffman</td>
+  </tr>
+  <tr>
+    <td><b>Channel capacity</b> <i>C</i><br>(잡음 통신로 부호화 정리)</td>
+    <td>잡음이 있어도 전송률이 <i>C</i> 아래이면 <b>오류율을 원하는 만큼 0에 가깝게</b>
+        만드는 부호가 존재한다.</td>
+    <td>범위 밖 (통신 과목)</td>
+  </tr>
+</table>
+
+<h3>선행 연구 — Shannon도 맨땅에서 시작하지 않았다</h3>
+<p>
+  Bell Labs의 <b>Harry Nyquist(1924)</b>와 <b>Ralph Hartley(1928)</b>가 먼저 "정보량"을 로그로
+  재려 했다. Hartley는 <b>가능한 메시지가 <i>s</i>개, 길이 <i>n</i></b>이면 정보량을
+  <i>H</i> = <i>n</i> log <i>s</i>로 봤다 — <b>모든 경우가 똑같이 일어난다</b>는 가정이었다.
+  Shannon은 여기서 <b>확률이 저마다 다른 경우</b>로 일반화했고, 그 결과가
+  <i>H</i> = &minus;&Sigma; <i>p</i> log <i>p</i> 다.
+</p>
+
+<h2>3. "Entropy"라는 말은 어디서 왔나</h2>
+
+<p>
+  엔트로피는 <b>열역학에서 80년 넘게 쓰이던 말</b>이다. Shannon의 공은 <b>이름을 새로 만든 것이
+  아니라</b>, 열역학에 이미 있던 그 양이 <b>정보에도 똑같이 적용된다는 것</b>을 알아본 데 있다.
+</p>
+
+<table>
+  <tr><th style="width:150px">인물</th><th>기여</th><th class="num" style="width:90px">시기</th></tr>
+  <tr><td><b>Rudolf Clausius</b></td>
+      <td>열역학 상태량으로 <b>"entropy"라는 용어를 처음 도입</b>
+          (그리스어 <i>tropē</i> "변환"에서). <i>dS</i> = &delta;<i>Q</i> / <i>T</i>.</td>
+      <td class="num">1865</td></tr>
+  <tr><td><b>Ludwig Boltzmann</b></td>
+      <td>통계역학 엔트로피 <i>S</i> = <i>k</i> log <i>W</i>
+          (<i>W</i> = 같은 거시상태를 만드는 <b>미시상태의 수</b>). 그의 묘비에 새겨져 있다.</td>
+      <td class="num">1870s</td></tr>
+  <tr><td><b>J. Willard Gibbs</b></td>
+      <td>앙상블 형식 <i>S</i> = &minus;<i>k</i><sub>B</sub> &Sigma; <i>p<sub>i</sub></i> ln <i>p<sub>i</sub></i>.
+          <b>Shannon의 식과 형태가 똑같다.</b></td>
+      <td class="num">1878</td></tr>
+  <tr><td><b>Claude Shannon</b></td>
+      <td><b>정보 엔트로피</b> <i>H</i> = &minus;&Sigma; <i>p</i>(<i>x</i>) log<sub>2</sub> <i>p</i>(<i>x</i>),
+          단위 <b>bits</b>. 정보·통신의 맥락에서 정의하고 부호화 정리로 뒷받침했다.</td>
+      <td class="num">1948</td></tr>
+</table>
+
+<div class="link">
+  <b>&#11088; von Neumann의 조언 (일화).</b> Shannon이 이 양의 이름을 고민하자
+  John von Neumann이 이렇게 말했다고 전해진다 —
+  <i>"그냥 entropy라고 불러라. 첫째, 통계역학에 똑같은 식이 이미 그 이름으로 있다.
+  둘째, 엔트로피가 정확히 뭔지는 아무도 모르니 논쟁에서 늘 유리하다."</i>
+  (Shannon 본인의 회고로 전해지는 이야기이며, 정확한 출처는 불분명하다.)
+</div>
+
+<h2>4. 열역학 엔트로피 ↔ 정보 엔트로피</h2>
+
+<div class="eq">
+  Gibbs (열역학) &nbsp; <i>S</i> = &minus;<i>k</i><sub>B</sub> &Sigma; <i>p<sub>i</sub></i> ln <i>p<sub>i</sub></i>
+  &nbsp;&nbsp;[ J / K ]<br>
+  Shannon (정보) &nbsp; <i>H</i> = &minus;&Sigma; <i>p<sub>i</sub></i> log<sub>2</sub> <i>p<sub>i</sub></i>
+  &nbsp;&nbsp;[ bits ]
+  <span class="cmt">— 다른 것은 상수 <i>k</i><sub>B</sub>와 로그의 밑뿐이다. 즉 <b>단위 변환</b>이다.</span>
+</div>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">같은 것</span>
+    <b>수식이 같다.</b> 둘 다 "확률이 여러 미시상태(또는 기호)에 얼마나 고르게 퍼져 있는가"를
+    잰다. 한쪽으로 몰리면 작고, 균등하면 최대다.
+  </div>
+  <div class="card">
+    <span class="lbl">다른 것</span>
+    <b>해석이 다르다.</b> 열역학은 <b>물리계의 미시상태</b>에 대한 불확실성,
+    정보이론은 <b>메시지 정보원</b>에 대한 불확실성이다.
+  </div>
+</div>
+
+<div class="note">
+  <b>둘은 비유가 아니라 물리적으로 연결돼 있다.</b> Landauer 원리(1961)에 따르면
+  정보 <b>1 bit을 지우면 최소 <i>k</i><sub>B</sub> <i>T</i> ln 2 만큼의 열</b>이 나온다.
+  이 관계가 "Maxwell의 도깨비" 역설을 풀어 준다 — 정보를 얻고 지우는 데에도 열역학적 비용이 든다.
+  (심화 주제 · 이 과목 범위 밖)
+</div>
+
+<h2>5. 시연 — 동전 하나의 엔트로피</h2>
+
+<div class="viz">
+<h3>&#128300; 앞면 확률 <i>p</i>를 바꾸면 엔트로피가 어떻게 변하나</h3>
+<p style="font-size:14.5px; margin-top:0">
+  Shannon 엔트로피 <i>H</i>(<i>p</i>) = &minus;<i>p</i> log<sub>2</sub><i>p</i>
+  &minus; (1&minus;<i>p</i>) log<sub>2</sub>(1&minus;<i>p</i>). 슬라이더로 편향된 동전을 만들어 보라.
+</p>
+
+<div class="grid2">
+<div>
+  <div class="sl">
+    <label>앞면 확률 p <span class="val" id="sh-vp">0.50</span></label>
+    <input type="range" id="sh-p" min="0.01" max="0.99" step="0.01" value="0.5">
+  </div>
+  <p style="font-size:13.5px; color:var(--body); margin:14px 0 0">
+    <span id="sh-msg"></span>
+  </p>
+</div>
+<div>
+  <canvas id="sh-cv" width="420" height="260"></canvas>
+</div>
+</div>
+
+<div class="tiles">
+  <div class="tile hi"><div class="t">H(p) — 평균 불확실성</div><div class="n" id="sh-h">1.0000</div></div>
+  <div class="tile"><div class="t">드문 쪽의 놀라움 −log₂</div><div class="n" id="sh-s">1.0000</div></div>
+  <div class="tile"><div class="t">단위</div><div class="n">bits</div></div>
+</div>
+</div>
+
+<p>
+  <b><i>p</i> = 0.5</b>에서 <i>H</i> = 1 bit로 최대 — "예/아니오 질문 한 번"이 딱 필요하다.
+  <b>한쪽으로 몰릴수록</b> <i>H</i>는 0으로 간다 — 결과가 거의 정해져 있어 물어볼 것이 없다.
+  이것이 오늘 슬라이드의 "엔트로피 = 분포에 붙는 불확실성의 양"이다.
+</p>
+
+<h2>6. 이 과목에서 이어지는 곳</h2>
+
+<ul>
+  <li><b>Topic 5 (오늘)</b> — Shannon 엔트로피, cross-entropy, KL divergence.
+      gzip·Huffman 실험이 source coding theorem을 눈으로 확인하는 것이다.</li>
+  <li><b>Topic 12 (MLE)</b> — "가능도를 최대화"하는 것이 "cross-entropy를 최소화"하는 것과
+      같은 말임을 보인다. 오늘 배운 것이 그대로 돌아온다.</li>
+  <li><b>Topic 13 (베이지안)</b> — prior와 posterior 사이의 KL로 "데이터가 준 정보량"을 잰다.</li>
+  <li><b>Topic 15 (Markov)</b> — 정보원이 기억을 가질 때의 엔트로피율(entropy rate)로 확장된다.</li>
+</ul>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — 엔트로피라는 <b>이름과 개념</b>은 Clausius·Boltzmann·Gibbs의 열역학에서
+  왔고, Shannon(1948)은 그것이 <b>정보를 재는 데에도 그대로 쓰인다</b>는 것을 알아내
+  <b>bit이라는 단위와 압축의 한계</b>를 만들었다. 이 과목의 "엔트로피"는 Shannon의 것이다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 5 (Entropy · self-information) 보충 &nbsp;·&nbsp;
+  Topic 12 (MLE = cross-entropy)에서 이어진다 &nbsp;·&nbsp;
+  시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const cv = $("sh-cv"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const PAD_L = 42, PAD_B = 30, PAD_T = 14, PAD_R = 14;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+
+  function Hbits(p){
+    if (p <= 0 || p >= 1) return 0;
+    return -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p));
+  }
+  const X = p => PAD_L + p * plotW;
+  const Y = h => PAD_T + plotH - (h / 1.05) * plotH;   // H 범위 0~1.05
+
+  function draw(){
+    const p = +$("sh-p").value;
+    const h = Hbits(p);
+    const surprise = -Math.log2(Math.min(p, 1 - p));
+    $("sh-vp").textContent = p.toFixed(2);
+    $("sh-h").textContent = h.toFixed(4);
+    $("sh-s").textContent = surprise.toFixed(4);
+
+    let msg;
+    if (h > 0.98)      msg = "거의 공정한 동전 — 다음 결과를 알려면 질문이 꼭 한 번 필요하다.";
+    else if (h > 0.6)  msg = "약간 편향 — 평균적으로 한 번보다 조금 덜 물어봐도 된다.";
+    else if (h > 0.2)  msg = "꽤 편향 — 대개는 안 물어봐도 맞힌다.";
+    else              msg = "거의 확정 — 결과가 뻔해서 정보가 거의 없다 (H → 0).";
+    $("sh-msg").textContent = msg;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // 격자 + y 눈금
+    ctx.strokeStyle = css("--line");
+    ctx.fillStyle = css("--muted");
+    ctx.font = "11px Consolas, monospace";
+    ctx.textAlign = "right";
+    for (let t = 0; t <= 1.0001; t += 0.25){
+      const y = Y(t);
+      ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(W - PAD_R, y); ctx.stroke();
+      ctx.fillText(t.toFixed(2), PAD_L - 6, y + 4);
+    }
+    ctx.textAlign = "center";
+    for (let t = 0; t <= 1.0001; t += 0.25){
+      ctx.fillText(t.toFixed(2), X(t), H - PAD_B + 16);
+    }
+    ctx.fillText("앞면 확률 p", PAD_L + plotW / 2, H - 4);
+
+    // H(p) 곡선
+    ctx.strokeStyle = css("--purple");
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    for (let i = 0; i <= 200; i++){
+      const pp = i / 200;
+      const x = X(pp), y = Y(Hbits(pp));
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+
+    // 현재 점 + 안내선
+    const cx = X(p), cy = Y(h);
+    ctx.strokeStyle = css("--muted");
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(cx, H - PAD_B); ctx.lineTo(cx, cy);
+    ctx.moveTo(PAD_L, cy); ctx.lineTo(cx, cy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = css("--accent");
+    ctx.beginPath(); ctx.arc(cx, cy, 5.5, 0, 7); ctx.fill();
+    ctx.fillStyle = css("--ink");
+    ctx.font = "bold 13px 'Malgun Gothic', sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("H = " + h.toFixed(3) + " bits", Math.min(cx + 10, W - 120), Math.max(cy - 10, PAD_T + 12));
+  }
+
+  $("sh-p").addEventListener("input", draw);
+  draw();
+})();
+</script>
+</body>
+</html>
