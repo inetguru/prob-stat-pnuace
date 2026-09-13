@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>두꺼운 꼬리 분포 — Cauchy와 Pareto</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px}
+  .tiles.c2{grid-template-columns:repeat(2,1fr)}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft); text-align:center}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:20px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile .f{font-size:11px; color:var(--muted)}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  .tile.warn{border-color:var(--orange); background:#fdf1e3}
+  .tile.ok{border-color:var(--teal); background:#ecfdf7}
+  .tile.bad{border-color:var(--pink); background:#fdf0f5}
+  canvas{max-width:100%; display:block}
+  .btnrow{display:flex; gap:8px; flex-wrap:wrap; margin:14px 0}
+  button{
+    background:var(--accent); color:#fff; border:none; border-radius:7px;
+    padding:9px 16px; font-size:13.5px; font-weight:700; cursor:pointer;
+    font-family:inherit;
+  }
+  button.ghost{background:#fff; color:var(--accent); border:1.5px solid var(--accent)}
+  button:hover{opacity:.88}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>두꺼운 꼬리 분포 — Cauchy와 Pareto</h1>
+<p class="sub">
+  확률통계 · Topic 6 보충자료 — 슬라이드 <b>24번 (Cauchy)</b> · 과제 <b>Pareto 샘플러</b>
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">슬라이드에서 본 것</span>
+    Cauchy는 <b>표본평균이 끝내 수렴하지 않는다</b>는 것만 확인했다.
+    Pareto는 과제에서 처음 만난다.
+  </div>
+  <div class="card">
+    <span class="lbl">이 노트가 답하는 것</span>
+    두 분포가 <b>실제로 어떤 현상</b>을 모델링하는지, 왜 극단값이 심심찮게 나오는지,
+    그리고 <b>둘이 서로 어떻게 다른지.</b>
+  </div>
+  <div class="card">
+    <span class="lbl">어디서 이어지는가</span>
+    Cauchy는 <b>Topic 10</b> 중심극한정리의 반례로 다시 나온다.
+    Pareto 같은 쏠린 분포는 <b>데이터과학 실무</b>에서 매출·트래픽·소득 데이터를 다룰 때 계속 마주친다.
+  </div>
+</div>
+
+<h2>1. "두꺼운 꼬리"란 무엇인가</h2>
+
+<p>
+  정규분포에서는 평균에서 멀리 떨어진 값이 <b>사실상 일어나지 않는다고 봐도 될 만큼</b> 드물다.
+  두꺼운 꼬리(heavy-tailed) 분포에서는 극단값이 여전히 드물긴 하지만,
+  <b>정규분포가 예측하는 것보다 훨씬 자주</b> 일어난다 — 그리고 그 "가끔 한 번"이
+  전체 그림을 완전히 바꿔 놓을 만큼 크다.
+</p>
+
+<table>
+  <tr><th>얼마나 극단적인가</th><th class="num">표준정규분포에서 일어날 확률</th><th>체감</th></tr>
+  <tr><td>평균에서 3배(3σ) 이상</td><td class="num">약 0.135%</td><td>1,000명 중 1~2명 — 그래도 있다</td></tr>
+  <tr><td>평균에서 5배(5σ) 이상</td><td class="num">약 0.00003%</td><td>350만 명 중 1명꼴</td></tr>
+  <tr><td>평균에서 10배(10σ) 이상</td><td class="num">약 0.0000000000000000000008%</td><td><b>사실상 절대 안 일어난다</b></td></tr>
+</table>
+
+<div class="note">
+  <b>⚠️ 두꺼운 꼬리 분포에서는 이 표가 통하지 않는다.</b> "평균의 10배짜리 사건"이
+  정규분포라면 우주의 역사를 다 뒤져도 못 볼 확률이지만, 이 노트에서 볼 Cauchy·Pareto
+  세계에서는 <b>몇 번 반복하면 그냥 나온다.</b> 아래에서 직접 만들어 확인해 보자.
+</div>
+
+<h2>2. Cauchy 분포 — 회전하는 등대</h2>
+
+<p>
+  해안에 등대가 하나 있고, 등대에서 어느 정도 떨어진 곳에 <b>길게 뻗은 벽</b>이 서 있다고 하자.
+  등대가 <b>완전히 무작위인 각도로</b> 빙글 돌면서 불빛 한 줄기를 비춘다
+  (등대와 벽이 이루는 수직 방향 기준으로, −90°와 +90° 사이에서 <b>균등하게</b> 무작위로).
+  그 불빛이 벽에 부딪히는 <b>지점의 위치</b>가 바로 Cauchy 분포를 따른다.
+</p>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">대부분은 얌전하다</span>
+    등대가 벽을 거의 정면으로 비추면(각도가 0° 근처) 불빛은 벽의 가까운 곳에 떨어진다.
+    이런 경우가 <b>가장 흔하다.</b>
+  </div>
+  <div class="card mark">
+    <span class="lbl">그런데 가끔 완전히 튄다</span>
+    각도가 ±90°에 아주 가까워지면(벽과 거의 나란한 방향) 불빛은
+    <b>벽의 까마득히 먼 곳까지</b> 날아간다. 각도를 균등하게 뽑았으니 이런 순간도
+    <b>드물지만 실제로 온다.</b>
+  </div>
+</div>
+
+<div class="viz">
+<h3>🔬 등대를 직접 돌려 본다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  버튼을 누를 때마다 등대가 무작위 각도로 한 번 비춘다. 아래 번호선에 착지 지점이 찍히고,
+  화면 밖으로 날아가면 화살표로 표시된다. 오른쪽 그래프는 <b>그때까지의 누적 평균</b>이다.
+</p>
+
+<canvas id="c-beam" width="900" height="220"></canvas>
+<canvas id="c-line" width="900" height="70" style="margin-top:4px"></canvas>
+
+<div class="btnrow">
+  <button id="c-1">💡 한 번 비추기</button>
+  <button id="c-10" class="ghost">10번 연속</button>
+  <button id="c-100" class="ghost">100번 연속</button>
+  <button id="c-reset" class="ghost">초기화</button>
+</div>
+
+<canvas id="c-run" width="900" height="180"></canvas>
+
+<div class="tiles">
+  <div class="tile"><div class="t">횟수</div><div class="n" id="c-n">0</div><div class="f">비춘 횟수</div></div>
+  <div class="tile hi"><div class="t">누적 평균</div><div class="n" id="c-mean">—</div><div class="f">계속 흔들린다</div></div>
+  <div class="tile warn"><div class="t">가장 멀리 날아간 값</div><div class="n" id="c-max">—</div><div class="f">벽 길이의 몇 배</div></div>
+  <div class="tile"><div class="t">|착지점| &gt; 20 인 비율</div><div class="n" id="c-far">0%</div><div class="f">"화면 밖으로" 날아간 비율</div></div>
+</div>
+</div>
+
+<div class="note">
+  <b>⚠️ 아무리 오래 눌러도 누적 평균은 어떤 숫자로 안정되지 않는다.</b>
+  가끔 등장하는 거대한 착지점 하나가 그때까지 쌓인 평균을 통째로 뒤흔들기 때문이다.
+  이것은 표본이 부족해서가 아니다 — <b>Cauchy 분포는 애초에 기댓값을 정의하는 적분 자체가
+  발산한다.</b> 평균만이 아니라 <b>분산도 존재하지 않는다.</b> 위치·규모를 어떻게 바꿔도
+  마찬가지다.
+</div>
+
+<div class="link">
+  <b>실제로 어디서 나타나는가.</b> 등대 이야기는 비유가 아니라 <b>수학적으로 정확히 같은 구조</b>다 —
+  "균등하게 뽑은 각도의 탄젠트"는 늘 Cauchy가 된다. 같은 구조가 실무에서 등장하는 대표적인
+  경우가 <b>두 측정값의 비율</b>이다. 예컨대 서로 독립인 두 정규분포 오차의 비를 계산하면
+  분모가 0 근처로 갈 때마다 비율이 폭발한다 — 등대가 벽과 나란해지는 순간과 똑같은 일이다.
+  물리학에서는 공명(resonance) 폭을 기술할 때 이 분포를 <b>Lorentz 분포</b>라는 이름으로 쓴다.
+</div>
+
+<h2>3. Pareto 분포 — 부의 쏠림</h2>
+
+<p>
+  1896년 이탈리아 경제학자 <b>Vilfredo Pareto</b>는 이탈리아 토지의 80%를 인구의 20%가
+  소유하고 있다는 것을 발견했다. 이 "몇 명이 대부분을 가져간다"는 패턴을 기술하는 것이
+  Pareto 분포다. 도시 인구(메가시티 몇 개 vs 수많은 소도시), 소득과 재산, 단어의 사용 빈도,
+  소셜미디어 팔로워 수, 서버에 저장된 파일 크기 — 전부 이 모양을 따른다.
+</p>
+
+<div class="eq">
+  최소값 <b>x<sub>m</sub></b> 이상에서 정의되고, <b>α (alpha)</b> 하나가 꼬리의 두께를 정한다.
+  <b>α가 작을수록</b> 쏠림이 심하고(꼬리가 두껍다), <b>α가 클수록</b> 고르게 퍼진다(꼬리가 얇다).
+</div>
+
+<div class="viz">
+<h3>🔬 α를 움직이며 "몇 명이 얼마를 가져가는가" 확인하기</h3>
+<p style="font-size:14.5px; margin-top:0">
+  최소 소득을 1이라고 하자. α를 바꾸면서 <b>분포 모양</b>과 <b>상위 20%·1%가 전체 소득의
+  몇 %를 가져가는지</b>를 함께 본다.
+</p>
+
+<div class="sl">
+  <label>α (꼬리 지수) <span class="val" id="p-va">1.50</span></label>
+  <input type="range" id="p-a" min="0.6" max="4" step="0.01" value="1.5">
+</div>
+
+<canvas id="p-pdf" width="900" height="220"></canvas>
+
+<div class="tiles">
+  <div class="tile hi"><div class="t">상위 20%가 가진 몫</div><div class="n" id="p-s20">—</div><div class="f">전체 소득 중</div></div>
+  <div class="tile hi"><div class="t">상위 1%가 가진 몫</div><div class="n" id="p-s1">—</div><div class="f">전체 소득 중</div></div>
+  <div class="tile" id="p-mean-tile"><div class="t">평균(기댓값)</div><div class="n" id="p-mean">—</div><div class="f" id="p-mean-f">존재</div></div>
+  <div class="tile" id="p-var-tile"><div class="t">분산</div><div class="n" id="p-var">—</div><div class="f" id="p-var-f">존재</div></div>
+</div>
+
+<p style="font-size:13.5px; color:var(--muted); margin-top:14px">
+  💡 α ≈ 1.16 부근으로 맞춰 보라 — 상위 20%가 정확히 <b>80%</b>를 갖는,
+  Pareto가 처음 관찰했던 바로 그 비율이 나온다.
+</p>
+</div>
+
+<div class="note">
+  <b>⚠️ α ≤ 1이면 평균 자체가 존재하지 않는다.</b> "평균 소득"이라는 말 자체가 무의미해진다는
+  뜻이다. 그래서 α ≤ 1 구간에서는 "상위 20%가 몇 %를 가졌는가"라는 질문도 <b>정의되지 않는다</b>
+  — 나눠 가질 "전체"부터가 무한대이기 때문이다. α ≤ 2이면 분산이 존재하지 않는다 — 평균은
+  있어도 그 평균 <b>둘레의 흔들림 정도를 잴 수 없다.</b> Cauchy는 이 스펙트럼의 극단(사실상
+  α=1에 대응하는 대칭 버전)에 있는 것이라고 생각하면 된다.
+</div>
+
+<h2>4. Cauchy와 Pareto, 어떻게 다른가</h2>
+
+<table>
+  <tr><th style="width:150px"></th><th>Cauchy</th><th>Pareto</th></tr>
+  <tr><td><b>정의역</b></td><td>모든 실수 (−∞, ∞)</td><td>어떤 최솟값 x<sub>m</sub> 이상의 양수만</td></tr>
+  <tr><td><b>모양</b></td><td>대칭 — 종 모양처럼 보이지만 꼬리가 훨씬 두껍다</td><td>비대칭 — 한쪽으로만 길게 늘어진 꼬리</td></tr>
+  <tr><td><b>평균</b></td><td>모수와 무관하게 <b>항상</b> 존재하지 않는다</td><td>α &gt; 1일 때만 존재한다</td></tr>
+  <tr><td><b>분산</b></td><td><b>항상</b> 존재하지 않는다</td><td>α &gt; 2일 때만 존재한다</td></tr>
+  <tr><td><b>두께 조절</b></td><td>조절할 수 없다 — 늘 같은 정도로 두껍다</td><td>α 하나로 얇음↔두꺼움을 자유롭게 조절</td></tr>
+  <tr><td><b>전형적 원인</b></td><td>각도·비율처럼 <b>나눗셈에서 분모가 0 근처로 갈 때</b></td><td>"성공이 성공을 부르는" 누적·쏠림 과정</td></tr>
+  <tr><td><b>실생활 예</b></td><td>측정값의 비율, 공명 현상 — 비교적 드문 특수 상황</td><td>소득·재산, 도시 크기, 파일 크기 — 데이터에서 흔히 만난다</td></tr>
+</table>
+
+<div class="link">
+  <b>⭐ 둘을 잇는 한 가지 사실.</b> α가 1에 가까워질수록 Pareto는 Cauchy처럼 "평균이라는 개념이
+  무너지는" 쪽으로 다가간다. α가 커질수록는 오히려 정규분포에 가까운 온순한 세계로 다가간다.
+  즉 Cauchy와 정규분포는 서로 정반대의 극단이고, <b>Pareto의 α는 그 사이 어디쯤을 고르는
+  다이얼</b>이라고 볼 수 있다.
+</div>
+
+<h2>5. 한 장으로 정리</h2>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — 두꺼운 꼬리 분포에서는 "가끔 일어나는 아주 큰 사건"이 실제로 자주
+  일어나서 평균 같은 개념을 무너뜨릴 수 있다. Cauchy는 그 극단(평균·분산이 <b>절대</b> 없다)이고,
+  Pareto는 α라는 다이얼로 그 정도를 조절할 수 있는 <b>현실 데이터의 단골 모델</b>이다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 6 보충자료 &nbsp;·&nbsp;
+  Cauchy는 Topic 10(중심극한정리의 반례)에서 다시 나온다 &nbsp;·&nbsp;
+  시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  // ================= Cauchy — 등대 =================
+  const beamCv = $("c-beam"), beamCx = beamCv.getContext("2d");
+  const lineCv = $("c-line"), lineCx = lineCv.getContext("2d");
+  const runCv = $("c-run"), runCx = runCv.getContext("2d");
+  const BW = beamCv.width, BH = beamCv.height;
+  const RANGE = 20;              // 번호선에 보이는 범위: -RANGE ~ +RANGE
+  const originX = BW / 2, lightY = 26, wallY = BH - 18;
+
+  let samples = [];
+  let lastAngle = 0, lastLanding = 0, animating = false;
+
+  function toPx(v){ return originX + (v / RANGE) * (BW / 2 - 30); }
+
+  function drawBeam(angleShown, landingShown){
+    beamCx.clearRect(0, 0, BW, BH);
+    // 벽
+    beamCx.strokeStyle = css("--ink"); beamCx.lineWidth = 3;
+    beamCx.beginPath(); beamCx.moveTo(20, wallY); beamCx.lineTo(BW - 20, wallY); beamCx.stroke();
+    beamCx.fillStyle = css("--muted"); beamCx.font = "11px Consolas, monospace"; beamCx.textAlign = "center";
+    for (let v = -RANGE; v <= RANGE; v += 5) {
+      const x = toPx(v);
+      beamCx.fillRect(x, wallY - 3, 1, 6);
+      beamCx.fillText(v, x, wallY + 16);
+    }
+    // 등대
+    beamCx.fillStyle = css("--accent");
+    beamCx.beginPath(); beamCx.arc(originX, lightY, 7, 0, 7); beamCx.fill();
+
+    // 빛줄기
+    const clipped = Math.max(-RANGE * 1.35, Math.min(RANGE * 1.35, landingShown));
+    const offscreen = Math.abs(landingShown) > RANGE * 1.35 || !isFinite(landingShown);
+    const targetX = toPx(clipped);
+    beamCx.strokeStyle = css("--orange"); beamCx.lineWidth = 2;
+    beamCx.beginPath(); beamCx.moveTo(originX, lightY); beamCx.lineTo(targetX, wallY); beamCx.stroke();
+
+    if (offscreen) {
+      beamCx.fillStyle = css("--pink"); beamCx.font = "bold 13px 'Malgun Gothic', sans-serif";
+      beamCx.fillText(landingShown > 0 ? "화면 밖으로 →" : "← 화면 밖으로", targetX, wallY - 10);
+    } else {
+      beamCx.fillStyle = css("--orange");
+      beamCx.beginPath(); beamCx.arc(targetX, wallY, 5, 0, 7); beamCx.fill();
+    }
+
+    beamCx.fillStyle = css("--body"); beamCx.font = "12px 'Malgun Gothic', sans-serif"; beamCx.textAlign = "left";
+    beamCx.fillText("각도 " + (angleShown * 180 / Math.PI).toFixed(1) + "°", 20, 16);
+  }
+
+  function drawStrip(){
+    lineCx.clearRect(0, 0, BW, lineCv.height);
+    lineCx.strokeStyle = css("--line");
+    lineCx.beginPath(); lineCx.moveTo(20, 20); lineCx.lineTo(BW - 20, 20); lineCx.stroke();
+    lineCx.fillStyle = css("--accent");
+    const shown = samples.slice(-400);
+    for (const v of shown) {
+      const c = Math.max(-RANGE * 1.35, Math.min(RANGE * 1.35, v));
+      const x = toPx(c);
+      lineCx.globalAlpha = 0.55;
+      lineCx.beginPath(); lineCx.arc(x, 20, 3, 0, 7); lineCx.fill();
+    }
+    lineCx.globalAlpha = 1;
+  }
+
+  function drawRunningMean(){
+    runCx.clearRect(0, 0, runCv.width, runCv.height);
+    const W = runCv.width, H = runCv.height, PAD = 30;
+    runCx.strokeStyle = css("--line");
+    runCx.beginPath(); runCx.moveTo(PAD, H / 2); runCx.lineTo(W - 10, H / 2); runCx.stroke();
+    runCx.fillStyle = css("--muted"); runCx.font = "11px Consolas, monospace"; runCx.textAlign = "left";
+    runCx.fillText("0", 6, H / 2 + 4);
+
+    if (samples.length < 1) return;
+    let sum = 0; const means = [];
+    for (let i = 0; i < samples.length; i++) { sum += samples[i]; means.push(sum / (i + 1)); }
+    const maxAbs = Math.max(2, ...means.map(m => Math.min(Math.abs(m), 50)));
+    const yOf = m => H / 2 - (Math.max(-50, Math.min(50, m)) / maxAbs) * (H / 2 - 12);
+    const xOf = i => PAD + (i / Math.max(1, means.length - 1)) * (W - PAD - 10);
+
+    runCx.strokeStyle = css("--accent"); runCx.lineWidth = 2;
+    runCx.beginPath();
+    means.forEach((m, i) => { const x = xOf(i), y = yOf(m); if (i === 0) runCx.moveTo(x, y); else runCx.lineTo(x, y); });
+    runCx.stroke();
+    runCx.fillStyle = css("--body"); runCx.font = "12px 'Malgun Gothic', sans-serif"; runCx.textAlign = "left";
+    runCx.fillText("누적 평균의 움직임 (비추는 횟수 →)", PAD, 14);
+  }
+
+  function updateTiles(){
+    const n = samples.length;
+    $("c-n").textContent = n;
+    if (n > 0) {
+      const mean = samples.reduce((a, b) => a + b, 0) / n;
+      $("c-mean").textContent = isFinite(mean) ? mean.toFixed(3) : "±∞";
+      const maxAbs = Math.max(...samples.map(Math.abs).filter(isFinite));
+      $("c-max").textContent = isFinite(maxAbs) ? maxAbs.toFixed(1) : "매우 큼";
+      const far = samples.filter(v => Math.abs(v) > RANGE).length / n;
+      $("c-far").textContent = (far * 100).toFixed(1) + "%";
+    }
+  }
+
+  function flashOnce(){
+    const theta = (Math.random() - 0.5) * Math.PI; // -90도 ~ +90도, 균등
+    const landing = Math.tan(theta);
+    samples.push(landing);
+    lastAngle = theta; lastLanding = landing;
+    drawBeam(theta, landing);
+    drawStrip();
+    drawRunningMean();
+    updateTiles();
+  }
+
+  function flashMany(k){
+    for (let i = 0; i < k; i++) {
+      const theta = (Math.random() - 0.5) * Math.PI;
+      samples.push(Math.tan(theta));
+    }
+    drawBeam(lastAngle, samples[samples.length - 1]);
+    drawStrip();
+    drawRunningMean();
+    updateTiles();
+  }
+
+  $("c-1").addEventListener("click", flashOnce);
+  $("c-10").addEventListener("click", () => flashMany(10));
+  $("c-100").addEventListener("click", () => flashMany(100));
+  $("c-reset").addEventListener("click", () => {
+    samples = [];
+    drawBeam(0, 0);
+    drawStrip();
+    drawRunningMean();
+    $("c-n").textContent = "0"; $("c-mean").textContent = "—";
+    $("c-max").textContent = "—"; $("c-far").textContent = "0%";
+  });
+  drawBeam(0, NaN);
+  drawStrip();
+  drawRunningMean();
+
+  // ================= Pareto — 부의 쏠림 =================
+  const pdfCv = $("p-pdf"), pdfCx = pdfCv.getContext("2d");
+  const XM = 1;
+
+  function shareTop(f, alpha){ return Math.pow(f, (alpha - 1) / alpha); }
+
+  function drawParetoPDF(alpha){
+    const W = pdfCv.width, H = pdfCv.height;
+    const PAD_L = 46, PAD_B = 30, PAD_T = 14, PAD_R = 14;
+    const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+    const XMAX = 8;
+    pdfCx.clearRect(0, 0, W, H);
+
+    function px(x){ return PAD_L + (x - XM) / (XMAX - XM) * plotW; }
+    let ymax = alpha * Math.pow(XM, alpha) / Math.pow(XM, alpha + 1); // f(xm), 최댓값
+    function py(y){ return PAD_T + plotH - Math.min(y, ymax) / ymax * plotH; }
+
+    pdfCx.strokeStyle = css("--line");
+    for (let x = XM; x <= XMAX; x += 1) {
+      const xx = px(x);
+      pdfCx.beginPath(); pdfCx.moveTo(xx, PAD_T); pdfCx.lineTo(xx, H - PAD_B); pdfCx.stroke();
+    }
+    pdfCx.fillStyle = css("--muted"); pdfCx.font = "11px Consolas, monospace"; pdfCx.textAlign = "center";
+    for (let x = XM; x <= XMAX; x += 1) pdfCx.fillText(x, px(x), H - PAD_B + 16);
+    pdfCx.fillStyle = css("--body"); pdfCx.font = "12px 'Malgun Gothic', sans-serif";
+    pdfCx.fillText("소득 (최소 소득 = 1)  →", W / 2, H - 4);
+
+    pdfCx.strokeStyle = css("--accent"); pdfCx.lineWidth = 2.5;
+    pdfCx.beginPath();
+    for (let i = 0; i <= 300; i++) {
+      const x = XM + (XMAX - XM) * i / 300;
+      const y = alpha * Math.pow(XM, alpha) / Math.pow(x, alpha + 1);
+      const px_ = px(x), py_ = py(y);
+      if (i === 0) pdfCx.moveTo(px_, py_); else pdfCx.lineTo(px_, py_);
+    }
+    pdfCx.stroke();
+    pdfCx.fillStyle = css("--ink"); pdfCx.font = "12px 'Malgun Gothic', sans-serif"; pdfCx.textAlign = "left";
+    pdfCx.fillText("소득 분포의 밀도 f(x)", PAD_L + 6, PAD_T + 14);
+  }
+
+  function updatePareto(){
+    const alpha = +$("p-a").value;
+    $("p-va").textContent = alpha.toFixed(2);
+    drawParetoPDF(alpha);
+
+    if (alpha > 1) {
+      $("p-s20").textContent = (shareTop(0.2, alpha) * 100).toFixed(1) + "%";
+      $("p-s1").textContent = (shareTop(0.01, alpha) * 100).toFixed(1) + "%";
+    } else {
+      $("p-s20").textContent = "정의 안 됨";
+      $("p-s1").textContent = "정의 안 됨";
+    }
+
+    const meanTile = $("p-mean-tile"), varTile = $("p-var-tile");
+    if (alpha > 1) {
+      $("p-mean").textContent = (alpha * XM / (alpha - 1)).toFixed(2);
+      $("p-mean-f").textContent = "존재한다";
+      meanTile.className = "tile ok";
+    } else {
+      $("p-mean").textContent = "∞";
+      $("p-mean-f").textContent = "존재하지 않는다";
+      meanTile.className = "tile bad";
+    }
+    if (alpha > 2) {
+      const m = alpha * XM / (alpha - 1);
+      const v = (alpha * XM * XM) / ((alpha - 1) * (alpha - 1) * (alpha - 2));
+      $("p-var").textContent = v.toFixed(2);
+      $("p-var-f").textContent = "존재한다";
+      varTile.className = "tile ok";
+    } else {
+      $("p-var").textContent = "∞";
+      $("p-var-f").textContent = "존재하지 않는다";
+      varTile.className = "tile bad";
+    }
+  }
+
+  $("p-a").addEventListener("input", updatePareto);
+  updatePareto();
+})();
+</script>
+</body>
+</html>
