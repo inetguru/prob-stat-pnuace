@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>컴퓨터는 어떻게 난수를 만드는가 — PRNG와 양자난수</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:28px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px}
+  .tiles.c2{grid-template-columns:repeat(2,1fr)}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft); text-align:center}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:20px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile .f{font-size:11px; color:var(--muted)}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  .tile.warn{border-color:var(--orange); background:#fdf1e3}
+  .tile.ok{border-color:var(--teal); background:#ecfdf7}
+  .tile.bad{border-color:var(--pink); background:#fdf0f5}
+  canvas{max-width:100%; display:block}
+  .btnrow{display:flex; gap:8px; flex-wrap:wrap; margin:14px 0; align-items:center}
+  button{
+    background:var(--accent); color:#fff; border:none; border-radius:7px;
+    padding:9px 16px; font-size:13.5px; font-weight:700; cursor:pointer;
+    font-family:inherit;
+  }
+  button.ghost{background:#fff; color:var(--accent); border:1.5px solid var(--accent)}
+  button.warnbtn{background:#fff; color:var(--pink); border:1.5px solid var(--pink)}
+  button:hover{opacity:.88}
+  input[type=number]{
+    font-family:Consolas,monospace; font-size:14px; padding:6px 9px;
+    border:1.5px solid var(--line); border-radius:6px; width:110px; color:var(--ink);
+  }
+  .seqrow{display:flex; flex-wrap:wrap; gap:6px; margin:14px 0; min-height:34px}
+  .chip{
+    display:inline-block; padding:5px 9px; border-radius:6px; background:var(--soft);
+    border:1px solid var(--line); font-family:Consolas,monospace; font-size:13px; color:var(--ink);
+  }
+  .chip.zero{background:#fdf0f5; border-color:var(--pink); color:#be185d; font-weight:800}
+  .chip.repeat{background:#fdf1e3; border-color:var(--orange); color:#9a5a12; font-weight:800}
+  .status{font-size:14px; margin:10px 0; color:var(--body)}
+  .status b{color:var(--ink)}
+  .tbbl{overflow-x:auto; margin:14px 0; border:1px solid var(--line); border-radius:8px}
+  .tbbl table{margin:0; min-width:720px}
+  .tbbl th,.tbbl td{
+    text-align:center; padding:6px 9px; font-family:Consolas,monospace; font-size:12.5px;
+    border:1px solid var(--line); white-space:nowrap;
+  }
+  .tbbl th:first-child,.tbbl td:first-child{
+    text-align:left; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--ink);
+    position:sticky; left:0; background:#fff;
+  }
+  .bas-plus{color:var(--accent); font-weight:800}
+  .bas-x{color:var(--orange); font-weight:800}
+  .ykeep{background:#ecfdf7}
+  .ndrop{background:var(--soft); color:var(--muted)}
+  .yerr{background:#fdf0f5; color:#be185d; font-weight:800}
+  .yok{background:#ecfdf7; color:#0d9488; font-weight:800}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .tiles,.tiles.c2{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>컴퓨터는 어떻게 난수를 만드는가 — PRNG와 양자난수</h1>
+<p class="sub">
+  확률통계 · Topic 6 보충자료 — 슬라이드 <b>20번 (컴퓨터는 균등난수밖에 못 만든다)</b> · PART 4 전체와 연결
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">슬라이드에서 본 것</span>
+    <code>rng.random()</code>이 <i>U</i>(0,1)을 주고, 그걸로 <b>어떤 분포든</b> 만들 수 있다는 것까지만 봤다.
+  </div>
+  <div class="card">
+    <span class="lbl">이 노트가 답하는 것</span>
+    그 <code>rng.random()</code> <b>자체는 대체 어떻게 난수를 만드는가</b> — 초창기 기법부터
+    오늘날 알고리즘, 그리고 "진짜" 무작위인 양자난수까지.
+  </div>
+  <div class="card">
+    <span class="lbl">어디서 이어지는가</span>
+    <b>Topic 11 몬테카를로</b>는 이 노트에서 본 난수 생성기 위에 통째로 서 있다.
+    양자암호는 시험 범위 밖의 짧은 곁다리 소개다.
+  </div>
+</div>
+
+<h2>1. 왜 "가짜(pseudo)"인가</h2>
+
+<p>
+  컴퓨터는 완전히 결정론적인 기계다. 같은 입력에는 언제나 같은 출력을 내놓는다.
+  그런데 "무작위"라는 말 자체가 "다음에 무엇이 나올지 예측할 수 없음"을 뜻하니,
+  결정론적 기계가 무작위를 만든다는 것은 애초에 모순처럼 들린다.
+</p>
+<p>
+  그래서 컴퓨터가 실제로 만드는 것은 전부 <b>의사난수(pseudo-random number)</b>다.
+  <b>시드(seed)</b>라는 출발점 하나를 정하면, 이후의 수열은 정해진 재귀식에 따라
+  <b>완전히 결정</b>된다. 다만 그 수열이 각종 통계적 검정을 통과할 만큼
+  "무작위처럼 보이도록" 정교하게 설계되어 있을 뿐이다.
+</p>
+
+<div class="note">
+  <b>⚠️ "무작위처럼 보인다"와 "진짜 무작위다"는 다른 말이다.</b> 시드를 알면 의사난수는
+  전부 예측할 수 있다. 이 차이가 이 노트의 뒷부분(양자난수)에서 왜 중요해지는지 보게 된다.
+</div>
+
+<div class="link">
+  <b>우리 랩이 시드를 고정하는 이유가 바로 이것이다.</b>
+  <code>rng = np.random.default_rng(20260302)</code>처럼 시드를 박아 두면,
+  몇 번을 다시 실행해도 <b>완전히 같은 수열</b>이 나온다 — 재현성(reproducibility).
+  실험을 다시 돌렸을 때 결과가 달라지면 안 되는 과학 연구에서는 이 결정론적 성질이
+  오히려 장점이 된다.
+</div>
+
+<h2>2. 초창기 기법 ① Middle-square method</h2>
+
+<p>
+  1946년 <b>존 폰 노이만(John von Neumann)</b>이 제안한, 컴퓨터로 난수를 만든 최초의
+  본격적인 시도다. ENIAC 시절에는 계산 자원이 극도로 비쌌기 때문에, 복잡한 물리적
+  난수 장치 대신 <b>곱셈 한 번으로 끝나는 방법</b>이 필요했다.
+</p>
+
+<div class="eq">
+  <b>알고리즘</b> — <i>n</i>자리 시드를 제곱해 <i>2n</i>자리 수를 만들고, 그 <b>가운데 <i>n</i>자리</b>를
+  다음 시드로 삼는다. 이것을 반복한다. (아래 데모는 <i>n</i> = 4, 즉 네 자리 시드를 쓴다.)
+</div>
+
+<div class="viz">
+<h3>🔬 직접 몇 단계 돌려 본다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  네 자리 시드를 넣고 "한 단계"를 눌러 보라. 제곱한 여덟 자리 수의 가운데 네 자리가
+  다음 값이 된다. "끝까지 자동 실행"은 <b>0에 도달하거나 이전 값이 다시 나올 때까지</b> 진행한다.
+</p>
+
+<div class="btnrow">
+  <label style="font-size:13.5px; font-weight:700; color:var(--ink)">시드
+    <input type="number" id="ms-seed" min="0" max="9999" value="1234">
+  </label>
+  <button id="ms-reset" class="ghost">초기화</button>
+  <button id="ms-step">한 단계</button>
+  <button id="ms-run" class="ghost">끝까지 자동 실행</button>
+</div>
+
+<div class="seqrow" id="ms-seq"></div>
+<p class="status" id="ms-status"></p>
+
+<div class="tiles">
+  <div class="tile"><div class="t">단계 수</div><div class="n" id="ms-steps">0</div><div class="f">제곱한 횟수</div></div>
+  <div class="tile hi"><div class="t">현재 값</div><div class="n" id="ms-cur">—</div><div class="f">가운데 4자리</div></div>
+  <div class="tile" id="ms-state-tile"><div class="t">상태</div><div class="n" id="ms-state" style="font-size:14px">진행 중</div><div class="f">0 도달 / 반복 감지</div></div>
+</div>
+</div>
+
+<div class="note">
+  <b>⚠️ 대부분의 시드에서 빠르게 0으로 수렴하거나 아주 짧은 주기에 갇힌다.</b>
+  한 번 0이 나오면 제곱도 0이라 영원히 0에 머문다. 다른 시드로 여러 번 시도해 보면
+  이 문제를 직접 확인할 수 있다. 폰 노이만 스스로도 "산술적인 방법으로 난수를
+  만들려는 사람은 누구나 죄를 짓고 있는 것이다"라는 농담을 남겼다고 전해진다 —
+  <b>자기 알고리즘의 한계를 가장 먼저 알고 있었던 셈</b>이다.
+</div>
+
+<h2>3. 초창기 기법 ② 선형합동생성기 (LCG)</h2>
+
+<p>
+  1949년 <b>D. H. Lehmer</b>가 제안한 방법으로, 훨씬 단순하면서도 훨씬 오래 살아남았다.
+  지금도 많은 언어의 기본 <code>rand()</code> 함수 안에 변형된 형태로 남아 있다.
+</p>
+
+<div class="eq">
+  <div style="font-size:19px; text-align:center; margin:6px 0">
+  <i>X</i><sub>n+1</sub> &nbsp;=&nbsp; (<i>a</i> <i>X<sub>n</sub></i> + <i>c</i>) mod <i>m</i>
+  </div>
+  세 정수 <i>a</i>(승수), <i>c</i>(증분), <i>m</i>(모듈러스)와 시드 <i>X</i><sub>0</sub>을 고르면 끝이다.
+  나온 정수를 <i>m</i>으로 나누면 [0,1) 위의 값이 된다 — <code>rng.random()</code>이
+  하는 일과 형태가 같다.
+</div>
+
+<div class="viz">
+<h3>🔬 승수 <i>a</i>를 바꾸며 패턴이 사라지는 순간 찾기</h3>
+<p style="font-size:14.5px; margin-top:0">
+  <i>m</i> = 4096, <i>c</i> = 1, <i>X</i><sub>0</sub> = 1로 고정하고 <i>a</i>만 바꾼다. 연속한 두 값
+  (<i>X<sub>n</sub></i>, <i>X<sub>n+1</sub></i>)을 점 하나로 찍는 <b>lag plot</b>을 그린다 — 진짜 무작위라면
+  정사각형을 고르게 채워야 한다.
+</p>
+
+<div class="sl">
+  <label>승수 <i>a</i> <span class="val" id="lcg-a-val">1</span></label>
+  <input type="range" id="lcg-a" min="1" max="4095" step="1" value="1">
+</div>
+<div class="btnrow">
+  <button id="lcg-p1" class="ghost">a = 1 (최악)</button>
+  <button id="lcg-p2" class="ghost">a = 5</button>
+  <button id="lcg-p3" class="ghost">a = 33</button>
+  <button id="lcg-p4" class="ghost">a = 1717 (실전 수준)</button>
+</div>
+
+<canvas id="lcg-plot" width="440" height="440"></canvas>
+
+<div class="tiles c2">
+  <div class="tile"><div class="t">공식</div><div class="n" id="lcg-formula" style="font-size:13px">X = (1·X + 1) mod 4096</div><div class="f">현재 파라미터</div></div>
+  <div class="tile hi"><div class="t">주기(Period)</div><div class="n" id="lcg-period">—</div><div class="f">반복 전까지 나오는 서로 다른 값의 수 (최대 4096)</div></div>
+</div>
+</div>
+
+<div class="note">
+  <b>⚠️ 주기가 길다고 무작위처럼 보이는 것은 아니다.</b> <i>a</i> = 1일 때 이미 <b>주기는 4096으로
+  가득 차 있다</b> — <i>m</i>개의 값을 하나도 빠짐없이 방문한다. 그런데도 lag plot은 대각선
+  한 줄이다. <b>"모든 값을 다 방문한다"</b>와 <b>"찍힌 점들이 무작위로 보인다"</b>는
+  전혀 다른 요구조건이다. <i>a</i>를 키워 가며 몇 개의 직선(정확히 <i>a</i>개)이 점점 촘촘해져
+  네모를 채운 것처럼 보이는 지점을 직접 찾아 보라.
+</div>
+
+<div class="link">
+  <b>실제로 이 결함이 재앙이 된 사건 — RANDU.</b> 1960~70년대 IBM 메인프레임의
+  기본 난수 생성기 RANDU는 <i>a</i> = 65539, <i>c</i> = 0, <i>m</i> = 2<sup>31</sup>을 썼다. 2차원 lag plot은
+  꽤 그럴듯해 보였지만, 연속한 <b>세 값</b> (<i>X<sub>n</sub></i>, <i>X<sub>n+1</sub></i>, <i>X<sub>n+2</sub></i>)을 3차원 공간에
+  점으로 찍으면 <b>단 15개의 평면 위에</b> 모든 점이 올라앉는다는 것이 1968년
+  조지 마사글리아(George Marsaglia)의 논문 "Random numbers fall mainly in the planes"로
+  드러났다. 그 사이 RANDU로 얻은 시뮬레이션 결과 상당수가 <b>다시 계산해야 했다.</b>
+</div>
+
+<span class="ref">CS109 · 직접 작성 (Chan 교재에는 PRNG 절이 없다)</span>
+
+<h2>4. 오늘날 쓰는 생성기 — Mersenne Twister와 PCG64</h2>
+
+<table>
+  <tr><th>생성기</th><th>등장</th><th>핵심 아이디어</th><th class="num">주기</th><th>비고</th></tr>
+  <tr>
+    <td><b>Mersenne Twister</b><br><span style="color:var(--muted); font-size:12.5px">(MT19937)</span></td>
+    <td>1997<br>Matsumoto·Nishimura</td>
+    <td>623차원까지 균등분포하도록 설계된 복잡한 비트 연산</td>
+    <td class="num">2<sup>19937</sup>−1</td>
+    <td>오랫동안 표준(Python <code>random</code>, 옛 numpy). 623개 연속 출력값만
+    알면 내부 상태 전체를 복원할 수 있어 <b>암호용으로는 못 쓴다.</b></td>
+  </tr>
+  <tr>
+    <td><b>PCG64</b><br><span style="color:var(--muted); font-size:12.5px">(Permuted Congruential Generator)</span></td>
+    <td>2014<br>Melissa O'Neill</td>
+    <td>LCG 내부를 그대로 쓰되, <b>출력만 비트 순열로 뒤섞어</b> 내부 상태를 숨긴다</td>
+    <td class="num">2<sup>128</sup></td>
+    <td>상태가 작고 빨라서 <b>numpy <code>default_rng()</code>의 기본값</b>. 우리
+    랩의 <code>rng</code>가 바로 이것이다.</td>
+  </tr>
+</table>
+
+<div class="note">
+  두 알고리즘 모두 여전히 <b>결정론적이고 예측 가능하다</b> — 내부 상태를 안다면.
+  시뮬레이션·게임·이 강의의 랩처럼 "통계적으로 무작위처럼 보이면 충분한" 곳에는
+  최고의 선택지지만, 다음 절에서 볼 <b>암호 키</b> 용도로는 근본적으로 부적합하다.
+</div>
+
+<h2>5. 그래서 정말 무작위가 필요한 곳 — 암호</h2>
+
+<p>
+  시뮬레이션이나 랩 실습에서는 의사난수로 충분하다. 오히려 시드를 고정할 수 있어서
+  <b>재현 가능하다는 점이 장점</b>이 된다. 하지만 <b>암호 키</b>를 만들 때는 정반대다.
+  시드나 내부 상태를 공격자가 추측하거나 복원할 수 있다면, 그것으로 만든 "비밀키"는
+  더 이상 비밀이 아니다. 실제로 예측 가능한 PRNG를 암호 키 생성에 잘못 사용해
+  일어난 대형 보안 사고가 여럿 있다.
+</p>
+
+<p>
+  그래서 정말로 예측 불가능한 무작위가 필요하다 — 이제 물리학으로 넘어간다.
+</p>
+
+<h2>6. 양자난수 (QRNG) — 원리적으로 예측 불가능한 난수</h2>
+
+<p>
+  양자역학에서 중첩 상태에 있는 입자를 측정하면, 그 결과는 이론상 <b>완전히 확률적</b>이다
+  (보른 규칙, Born rule). 이것은 "우리가 아직 모르는 숨은 변수 때문에 예측하지 못하는 것"이
+  아니다 — 벨 부등식(Bell's inequality) 실험들은 그런 숨은 변수가 없다는 것을 강하게
+  뒷받침한다. 측정 이전에는 <b>결과 자체가 정해져 있지 않다</b>는 뜻에 훨씬 가깝다.
+</p>
+
+<div class="eq">
+  <b>가장 단순한 구현</b> — 광자 하나를 50:50 빔 스플리터(beam splitter)로 보낸다.
+  광자는 반사되거나 투과되며, 각각 정확히 50%의 확률로 서로 다른 검출기에서 잡힌다.
+  <b>이 결과가 진짜 무작위 비트</b>가 된다.
+</div>
+
+<div class="viz">
+<h3>🔬 빔 스플리터에 광자를 쏴 본다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  광자 하나가 빔 스플리터에서 반사되면 검출기 A(비트 0), 투과하면 검출기 B(비트 1)에서
+  잡힌다고 하자. 버튼을 눌러 광자를 쏘고, 실측 비율이 50:50에 가까워지는지 확인해 보라.
+</p>
+
+<canvas id="q-beam" width="520" height="200"></canvas>
+
+<div class="btnrow">
+  <button id="q-1">💡 광자 하나 쏘기</button>
+  <button id="q-10" class="ghost">10개 연속</button>
+  <button id="q-100" class="ghost">100개 연속</button>
+  <button id="q-reset" class="ghost">초기화</button>
+</div>
+
+<div class="tiles">
+  <div class="tile"><div class="t">총 시도</div><div class="n" id="q-n">0</div><div class="f">쏜 광자 수</div></div>
+  <div class="tile"><div class="t">비트 0</div><div class="n" id="q-c0">0</div><div class="f">검출기 A (반사)</div></div>
+  <div class="tile"><div class="t">비트 1</div><div class="n" id="q-c1">0</div><div class="f">검출기 B (투과)</div></div>
+  <div class="tile hi"><div class="t">실측 비율</div><div class="n" id="q-ratio">—</div><div class="f">비트 1의 비율 (이론 50%)</div></div>
+</div>
+</div>
+
+<div class="note">
+  <b>⚠️ 메타적인 함정 하나.</b> 이 웹페이지의 데모조차 브라우저의 <code>Math.random()</code> —
+  결국 또 다른 PRNG — 를 빌려 결과를 흉내 낸다. 화면 위에서 "진짜 무작위"를 눈으로
+  보여주려 해도 고전 컴퓨터로는 의사난수밖에 만들 수 없다. <b>실제 양자난수는 진짜
+  단일광자 검출기 같은 물리 하드웨어</b>가 있어야 얻어진다.
+</div>
+
+<div class="link">
+  <b>실제로 쓰이는 곳.</b> ID Quantique의 Quantis 칩, 호주국립대(ANU)의
+  진공요동 기반 QRNG(온라인으로 실시간 공개되어 있다) 같은 상용·연구용 장치가
+  실제로 존재한다. 일부 복권 추첨기, 카지노 장비, 고급 보안이 필요한 서버의
+  엔트로피원(entropy source)으로 쓰인다.
+</div>
+
+<h2>7. 양자암호 — BB84로 도청을 잡아낸다</h2>
+
+<p>
+  1984년 <b>Charles Bennett과 Gilles Brassard</b>가 제안한 <b>BB84</b>는 최초의
+  양자키분배(Quantum Key Distribution, QKD) 프로토콜이다. 목표는 두 사람(Alice와 Bob)이
+  <b>아무도 몰래 엿듣지 못하는 비밀키</b>를 나눠 갖는 것이다.
+</p>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">기저(basis)란</span>
+    광자의 편광을 인코딩하는 두 가지 서로 다른 "측정 방식"이다.
+    <code>+</code> 기저는 수직/수평 편광으로, <code>×</code> 기저는 45°/135° 대각
+    편광으로 0과 1을 표현한다. 두 기저는 서로 호환되지 않아서,
+    <b>잘못된 기저로 측정하면 결과가 완전히 무작위</b>가 되어 버린다.
+  </div>
+  <div class="card mark">
+    <span class="lbl">프로토콜 요약</span>
+    Alice는 무작위 비트를 무작위 기저로 인코딩해 광자를 보낸다.
+    Bob도 각 광자를 무작위 기저로 측정한다. 이후 둘은 <b>어떤 기저를 썼는지만</b>
+    공개적으로 비교해, <b>기저가 일치한 경우만</b> 남긴다 — 이것이 공유 비밀키다.
+  </div>
+</div>
+
+<div class="note">
+  <b>왜 도청이 감지되는가 — 복제불가능 정리(no-cloning theorem).</b> 양자 상태는
+  복제할 수 없다. 그래서 도청자 Eve는 광자를 가로채 <b>직접 측정</b>한 뒤 다시
+  보내야 한다. 이때 Eve가 고른 기저가 Alice의 원래 기저와 다르면, 측정 그 자체가
+  광자의 상태를 바꿔 버린다. Bob이 나중에 원래(Alice의) 기저로 측정해도 이미
+  달라진 상태이므로 <b>일정 확률로 틀린 비트</b>를 얻는다 — 이 오류율이 도청의 증거가 된다.
+</div>
+
+<div class="viz">
+<h3>🔬 BB84를 직접 돌려 본다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  광자 32개로 한 번 키를 만든다. "Eve 도청" 버튼으로 중간에서 가로채 측정한 뒤
+  다시 보내는 공격을 켜고 꺼 보라. <b>기저가 일치해 키로 남은 비트들</b>만
+  오류 여부를 표시한다.
+</p>
+
+<div class="btnrow">
+  <button id="bb-run">🔑 32개 광자로 키 만들기</button>
+  <button id="bb-eve" class="ghost">Eve 도청: 꺼짐</button>
+</div>
+
+<div class="tbbl"><table id="bb-table"></table></div>
+
+<div class="tiles c2">
+  <div class="tile hi"><div class="t">공유 키 길이</div><div class="n" id="bb-keylen">—</div><div class="f">기저가 일치한 것만</div></div>
+  <div class="tile" id="bb-err-tile"><div class="t">오류율 (QBER)</div><div class="n" id="bb-err">—</div><div class="f">도청 여부를 알려주는 지표</div></div>
+</div>
+
+<p style="font-size:13.5px; color:var(--muted); margin-top:14px">
+  💡 Eve가 매번 가로채 측정·재전송하면 이론적으로 키 오류율(QBER)이 평균
+  <b>약 25%</b>까지 뛴다 (도청이 없으면 이 단순 모델에서는 0%). 표본이 32개뿐이라
+  한 번의 실행으로는 정확히 25%가 안 나올 수 있다 — "다시 뽑기"를 여러 번 눌러
+  경향을 확인해 보라.
+</p>
+</div>
+
+<div class="link">
+  <b>실제로 쓰이는 곳.</b> 2017년 중국의 <b>묵자(Mozi/Micius) 위성</b>은 위성과 지상국
+  사이에서 양자키분배를 실험적으로 성공시켰다. 일부 금융·국방 네트워크에서 제한적으로
+  실전 배치되어 있지만, 거리·속도·비용 면에서 여전히 기존 암호 방식과 경쟁하는
+  활발한 연구 분야다.
+</div>
+
+<h2>8. 한 장으로 정리</h2>
+
+<table>
+  <tr><th></th><th>PRNG (의사난수)</th><th>QRNG (양자난수)</th></tr>
+  <tr><td><b>근본 원리</b></td><td>결정론적 재귀식 (시드 → 수열)</td><td>양자역학적 측정 (본질적으로 확률적)</td></tr>
+  <tr><td><b>예측 가능성</b></td><td>시드를 알면 전부 예측 가능</td><td>원리적으로 예측 불가능</td></tr>
+  <tr><td><b>속도·비용</b></td><td>매우 빠르고 공짜 (소프트웨어)</td><td>느리고 전용 하드웨어 필요</td></tr>
+  <tr><td><b>재현성</b></td><td>시드 고정 시 완전히 재현된다</td><td>재현 불가능 — 그것이 핵심이다</td></tr>
+  <tr><td><b>쓰임</b></td><td>시뮬레이션·게임·이 강의의 랩</td><td>암호 키, 보안이 핵심인 곳</td></tr>
+  <tr><td><b>이 과목에서</b></td><td><code>rng = np.random.default_rng(seed)</code> — 전 Topic 공통</td><td>이 노트에서 소개만 한다 (시험 범위 아님)</td></tr>
+</table>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — 컴퓨터가 만드는 난수는 전부 시드에서 시작하는 결정론적 수열이다.
+  Middle-square와 LCG는 그 첫 시도였고 결함이 있었으며, Mersenne Twister와 PCG64가
+  그 결함을 통계적으로 걷어냈지만 여전히 <b>예측 가능</b>하다. 정말로 예측 불가능한
+  무작위가 필요할 때(암호 키)만 양자역학의 물리적 확률성으로 넘어간다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 6 보충자료 · 슬라이드 20번(균등난수)과 연결 &nbsp;·&nbsp;
+  Topic 11 몬테카를로에서 <code>rng</code>가 다시 등장한다 &nbsp;·&nbsp;
+  시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  // ================= Middle-square =================
+  let msHistory = [1234];
+
+  function msRenderStatus(state){
+    const t = $("ms-state"), tile = $("ms-state-tile");
+    if (state === "zero"){ t.textContent = "0으로 수렴"; tile.className = "tile bad"; }
+    else if (state === "repeat"){ t.textContent = "이전 값 반복"; tile.className = "tile warn"; }
+    else { t.textContent = "진행 중"; tile.className = "tile"; }
+  }
+
+  function msRender(lastState){
+    const box = $("ms-seq");
+    box.innerHTML = "";
+    msHistory.forEach((v, i) => {
+      const span = document.createElement("span");
+      span.className = "chip" + (v === 0 ? " zero" : "");
+      span.textContent = v.toString().padStart(4, "0");
+      box.appendChild(span);
+    });
+    $("ms-steps").textContent = msHistory.length - 1;
+    $("ms-cur").textContent = msHistory[msHistory.length - 1].toString().padStart(4, "0");
+    msRenderStatus(lastState || "run");
+  }
+
+  function msNext(cur){
+    const sq = cur * cur;
+    const s = String(sq).padStart(8, "0");
+    return parseInt(s.substring(2, 6), 10);
+  }
+
+  function msStepOnce(){
+    const cur = msHistory[msHistory.length - 1];
+    const nxt = msNext(cur);
+    const seenBefore = msHistory.includes(nxt);
+    msHistory.push(nxt);
+    if (nxt === 0) return "zero";
+    if (seenBefore) return "repeat";
+    return "run";
+  }
+
+  $("ms-reset").addEventListener("click", () => {
+    let seed = parseInt($("ms-seed").value, 10);
+    if (!Number.isFinite(seed) || seed < 0) seed = 0;
+    if (seed > 9999) seed = 9999;
+    msHistory = [seed];
+    msRender("run");
+  });
+  $("ms-step").addEventListener("click", () => {
+    const state = msStepOnce();
+    msRender(state);
+  });
+  $("ms-run").addEventListener("click", () => {
+    let state = "run";
+    for (let i = 0; i < 40; i++){
+      state = msStepOnce();
+      if (state !== "run") break;
+    }
+    msRender(state);
+  });
+  msRender("run");
+
+  // ================= LCG lag plot =================
+  const lcgCv = $("lcg-plot"), lcgCx = lcgCv.getContext("2d");
+  const LCG_M = 4096, LCG_C = 1, LCG_X0 = 1;
+
+  function drawLagPlot(a){
+    const W = lcgCv.width, H = lcgCv.height;
+    const PAD_L = 40, PAD_B = 30, PAD_T = 10, PAD_R = 10;
+    const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+    lcgCx.clearRect(0, 0, W, H);
+    lcgCx.strokeStyle = css("--line"); lcgCx.lineWidth = 1;
+    lcgCx.strokeRect(PAD_L, PAD_T, plotW, plotH);
+
+    const seen = new Map();
+    const seq = [LCG_X0];
+    seen.set(LCG_X0, 0);
+    let x = LCG_X0, period = LCG_M, tail = 0;
+    for (let i = 1; i <= LCG_M + 1; i++){
+      x = (a * x + LCG_C) % LCG_M;
+      if (seen.has(x)){ tail = seen.get(x); period = i - tail; break; }
+      seen.set(x, i);
+      seq.push(x);
+    }
+
+    lcgCx.fillStyle = css("--accent"); lcgCx.globalAlpha = 0.55;
+    for (let i = 0; i < seq.length - 1; i++){
+      const px = PAD_L + (seq[i] / LCG_M) * plotW;
+      const py = PAD_T + plotH - (seq[i + 1] / LCG_M) * plotH;
+      lcgCx.fillRect(px, py, 2.4, 2.4);
+    }
+    lcgCx.globalAlpha = 1;
+
+    lcgCx.fillStyle = css("--muted"); lcgCx.font = "11px Consolas, monospace"; lcgCx.textAlign = "center";
+    lcgCx.fillText("X_n / m  →", PAD_L + plotW / 2, H - 6);
+    lcgCx.save();
+    lcgCx.translate(12, PAD_T + plotH / 2);
+    lcgCx.rotate(-Math.PI / 2);
+    lcgCx.fillText("X_(n+1) / m  →", 0, 0);
+    lcgCx.restore();
+
+    return period;
+  }
+
+  function updateLCG(){
+    const a = +$("lcg-a").value;
+    $("lcg-a-val").textContent = a;
+    $("lcg-formula").textContent = "X = (" + a + "·X + " + LCG_C + ") mod " + LCG_M;
+    const period = drawLagPlot(a);
+    $("lcg-period").textContent = period;
+  }
+
+  function setA(val){
+    $("lcg-a").value = val;
+    updateLCG();
+  }
+  $("lcg-a").addEventListener("input", updateLCG);
+  $("lcg-p1").addEventListener("click", () => setA(1));
+  $("lcg-p2").addEventListener("click", () => setA(5));
+  $("lcg-p3").addEventListener("click", () => setA(33));
+  $("lcg-p4").addEventListener("click", () => setA(1717));
+  updateLCG();
+
+  // ================= Quantum beam splitter =================
+  const qCv = $("q-beam"), qCx = qCv.getContext("2d");
+  let qCounts = [0, 0]; // [비트0, 비트1]
+
+  function drawBeamSchematic(lastBit){
+    const W = qCv.width, H = qCv.height;
+    qCx.clearRect(0, 0, W, H);
+    const srcX = 40, srcY = H / 2, splitX = W / 2 - 20, splitY = H / 2;
+    const detAX = W / 2 - 20, detAY = 24;       // 반사 → 비트 0
+    const detBX = W - 60, detBY = H / 2;        // 투과 → 비트 1
+
+    // 광원
+    qCx.fillStyle = css("--ink");
+    qCx.beginPath(); qCx.arc(srcX, srcY, 6, 0, 7); qCx.fill();
+    qCx.font = "12px 'Malgun Gothic', sans-serif"; qCx.textAlign = "center";
+    qCx.fillText("광원", srcX, srcY + 24);
+
+    // 광원 → 빔 스플리터
+    qCx.strokeStyle = css("--muted"); qCx.lineWidth = 1.5; qCx.setLineDash([4, 3]);
+    qCx.beginPath(); qCx.moveTo(srcX + 8, srcY); qCx.lineTo(splitX - 14, splitY); qCx.stroke();
+    qCx.setLineDash([]);
+
+    // 빔 스플리터 (45도 사각형)
+    qCx.save();
+    qCx.translate(splitX, splitY); qCx.rotate(-Math.PI / 4);
+    qCx.strokeStyle = css("--purple"); qCx.lineWidth = 3;
+    qCx.beginPath(); qCx.moveTo(-16, 0); qCx.lineTo(16, 0); qCx.stroke();
+    qCx.restore();
+    qCx.fillStyle = css("--body"); qCx.font = "11px 'Malgun Gothic', sans-serif";
+    qCx.fillText("빔 스플리터 50:50", splitX, splitY + 34);
+
+    // 스플리터 → 검출기 A (위, 반사, 비트 0)
+    qCx.strokeStyle = css("--line"); qCx.lineWidth = 1.5;
+    qCx.beginPath(); qCx.moveTo(splitX, splitY); qCx.lineTo(detAX, detAY + 14); qCx.stroke();
+    // 스플리터 → 검출기 B (오른쪽, 투과, 비트 1)
+    qCx.beginPath(); qCx.moveTo(splitX, splitY); qCx.lineTo(detBX - 14, detBY); qCx.stroke();
+
+    // 검출기 박스
+    function detBox(x, y, label, hi){
+      qCx.fillStyle = hi ? css("--accent") : "#fff";
+      qCx.strokeStyle = css("--ink"); qCx.lineWidth = 1.5;
+      qCx.beginPath(); qCx.roundRect ? qCx.roundRect(x - 30, y - 14, 60, 28, 5) : qCx.rect(x - 30, y - 14, 60, 28);
+      qCx.fill(); qCx.stroke();
+      qCx.fillStyle = hi ? "#fff" : css("--ink"); qCx.font = "12px 'Malgun Gothic', sans-serif"; qCx.textAlign = "center";
+      qCx.fillText(label, x, y + 4);
+    }
+    detBox(detAX, detAY, "A · 비트 0", lastBit === 0);
+    detBox(detBX, detBY, "B · 비트 1", lastBit === 1);
+  }
+
+  function qShootOnce(){
+    const bit = Math.random() < 0.5 ? 0 : 1;
+    qCounts[bit]++;
+    drawBeamSchematic(bit);
+    qUpdateTiles();
+  }
+  function qShootMany(k){
+    let last = null;
+    for (let i = 0; i < k; i++){
+      const bit = Math.random() < 0.5 ? 0 : 1;
+      qCounts[bit]++;
+      last = bit;
+    }
+    drawBeamSchematic(last);
+    qUpdateTiles();
+  }
+  function qUpdateTiles(){
+    const n = qCounts[0] + qCounts[1];
+    $("q-n").textContent = n;
+    $("q-c0").textContent = qCounts[0];
+    $("q-c1").textContent = qCounts[1];
+    $("q-ratio").textContent = n > 0 ? (qCounts[1] / n * 100).toFixed(1) + "%" : "—";
+  }
+  $("q-1").addEventListener("click", qShootOnce);
+  $("q-10").addEventListener("click", () => qShootMany(10));
+  $("q-100").addEventListener("click", () => qShootMany(100));
+  $("q-reset").addEventListener("click", () => {
+    qCounts = [0, 0];
+    drawBeamSchematic(null);
+    qUpdateTiles();
+  });
+  drawBeamSchematic(null);
+  qUpdateTiles();
+
+  // ================= BB84 =================
+  let eveOn = false;
+  const N_PHOTON = 32;
+
+  function randBit(){ return Math.random() < 0.5 ? 0 : 1; }
+  function randBasis(){ return Math.random() < 0.5 ? "+" : "×"; }
+
+  function rowHtml(label, arr, isBasis){
+    let html = "<tr><th>" + label + "</th>";
+    arr.forEach(v => {
+      if (v === null || v === undefined) html += "<td>—</td>";
+      else if (isBasis) html += '<td class="' + (v === "+" ? "bas-plus" : "bas-x") + '">' + v + "</td>";
+      else html += "<td>" + v + "</td>";
+    });
+    return html + "</tr>";
+  }
+
+  function runBB84(){
+    const ab = [], abas = [], ebas = [], ebit = [], bbas = [], bbit = [], keep = [], err = [];
+    for (let i = 0; i < N_PHOTON; i++){
+      const a_bit = randBit();
+      const a_bas = randBasis();
+      let t_bas = a_bas, t_bit = a_bit;
+      let e_bas = null, e_bit = null;
+      if (eveOn){
+        e_bas = randBasis();
+        e_bit = (e_bas === a_bas) ? a_bit : randBit();
+        t_bas = e_bas; t_bit = e_bit;
+      }
+      const b_bas = randBasis();
+      const b_bit = (b_bas === t_bas) ? t_bit : randBit();
+      const k = (a_bas === b_bas);
+      ab.push(a_bit); abas.push(a_bas); ebas.push(e_bas); ebit.push(e_bit);
+      bbas.push(b_bas); bbit.push(b_bit); keep.push(k); err.push(k && (b_bit !== a_bit));
+    }
+
+    let html = "<tr><th>photon</th>";
+    for (let i = 0; i < N_PHOTON; i++) html += "<th>" + (i + 1) + "</th>";
+    html += "</tr>";
+    html += rowHtml("Alice 비트", ab);
+    html += rowHtml("Alice 기저", abas, true);
+    if (eveOn){
+      html += rowHtml("Eve 기저", ebas, true);
+      html += rowHtml("Eve 비트", ebit);
+    }
+    html += rowHtml("Bob 기저", bbas, true);
+    html += rowHtml("Bob 비트", bbit);
+    html += "<tr><th>기저 일치?</th>" +
+      keep.map(k => '<td class="' + (k ? "ykeep" : "ndrop") + '">' + (k ? "유지" : "버림") + "</td>").join("") +
+      "</tr>";
+    html += "<tr><th>오류(도청 흔적)</th>" +
+      keep.map((k, i) => k ? ('<td class="' + (err[i] ? "yerr" : "yok") + '">' + (err[i] ? "✗" : "✓") + "</td>") : '<td class="ndrop">—</td>').join("") +
+      "</tr>";
+    $("bb-table").innerHTML = html;
+
+    const keyLen = keep.filter(Boolean).length;
+    const errCount = err.filter(Boolean).length;
+    const qber = keyLen > 0 ? (errCount / keyLen * 100) : 0;
+    $("bb-keylen").textContent = keyLen;
+    $("bb-err").textContent = qber.toFixed(1) + "%";
+    $("bb-err-tile").className = "tile" + (qber > 15 ? " bad" : " ok");
+  }
+
+  $("bb-run").addEventListener("click", runBB84);
+  $("bb-eve").addEventListener("click", () => {
+    eveOn = !eveOn;
+    const btn = $("bb-eve");
+    btn.textContent = eveOn ? "Eve 도청: 켜짐 ⚠️" : "Eve 도청: 꺼짐";
+    btn.className = eveOn ? "warnbtn" : "ghost";
+    runBB84();
+  });
+  runBB84();
+})();
+</script>
+</body>
+</html>

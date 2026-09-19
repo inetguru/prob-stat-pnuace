@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lognormal과 Student-t — 정규분포와 비교</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card.mark{border-color:var(--accent); background:#eef1fe}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .sl{margin-bottom:10px}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px}
+  .tiles.c3{grid-template-columns:repeat(3,1fr)}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft); text-align:center}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:19px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile .f{font-size:11px; color:var(--muted)}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  .tile.warn{border-color:var(--orange); background:#fdf1e3}
+  .tile.ok{border-color:var(--teal); background:#ecfdf7}
+  .legend{display:flex; gap:18px; font-size:13px; color:var(--body); margin-top:6px}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .legend i{width:14px; height:3px; display:inline-block; border-radius:2px}
+  canvas{max-width:100%; display:block}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .tiles,.tiles.c3{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Lognormal과 Student-t — 정규분포와 비교</h1>
+<p class="sub">
+  확률통계 · Topic 7 보충자료 — <b>Lab 7</b>의 소득·수익률 데이터를 만든 두 분포
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">랩에서 본 것</span>
+    Lab 7은 소득을 <code>rng.lognormal(mean=8.0, sigma=0.7)</code>로,
+    수익률을 <code>stats.t.rvs(df=3)</code>로 합성했다. 왜 하필 이 둘인지는 다루지 않았다.
+  </div>
+  <div class="card">
+    <span class="lbl">이 노트가 답하는 것</span>
+    두 분포가 정규분포와 <b>어떻게 다르고</b>, 왜 이 데이터를 흉내 내는 데
+    <b>이 분포를 골랐는지.</b>
+  </div>
+  <div class="card">
+    <span class="lbl">어디서 이어지는가</span>
+    Student-t는 <b>Topic 14</b> 가설검정의 t-검정에서, "곱하면 종 모양"은
+    <b>Topic 10</b> 중심극한정리에서 다시 나온다.
+  </div>
+</div>
+
+<h2>1. Lognormal 분포 — 곱하면 이렇게 된다</h2>
+
+<p>
+  오늘 Topic 7의 미스터리는 <b>"더하면 종 모양이 나온다"</b>였다. 균등분포에서 뽑은 값을
+  여러 개 <b>더했더니</b> 정규분포가 나왔다. 그런데 데이터를 <b>더하지 않고 곱하면</b>
+  어떻게 될까?
+</p>
+
+<div class="eq">
+  확률변수 <b>X</b>의 로그 <b>ln X</b>가 정규분포 N(μ, σ²)를 따르면,
+  <b>X 자체는 lognormal(로그정규) 분포</b>를 따른다고 한다.
+</div>
+
+<p>
+  이유는 로그의 성질 하나에서 나온다. <b>곱셈은 로그를 취하면 덧셈이 된다.</b>
+  X = X<sub>1</sub> × X<sub>2</sub> × ⋯ × X<sub>n</sub> 이라면
+</p>
+
+<div class="eq">
+  ln X = ln X<sub>1</sub> + ln X<sub>2</sub> + ⋯ + ln X<sub>n</sub>
+</div>
+
+<p>
+  여러 개의 양수 값을 <b>곱한 것</b>은, 그 <b>로그</b>를 보면 여러 개를 <b>더한 것</b>과
+  똑같은 모양이 된다. 그리고 "더하면 종 모양"은 오늘 본 바로 그 현상이다 —
+  그러니 <b>ln X 가 종 모양(정규분포)에 가까워지고, X 자체는 lognormal이 된다.</b>
+</p>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">정규분포가 어울리는 곳</span>
+    키, 측정 오차, 시험 점수 — 여러 <b>작은 요인이 더해지는</b> 값.
+  </div>
+  <div class="card mark">
+    <span class="lbl">Lognormal이 어울리는 곳</span>
+    소득, 주가, 회사 규모, 입자 크기 — 여러 <b>작은 비율이 곱해지는</b> 값
+    (예: 소득은 해마다 몇 % 오르거나 내리는 <b>배율</b>이 누적된 결과다).
+  </div>
+</div>
+
+<div class="viz">
+<h3>🔬 σ를 움직이며 모양 변화를 본다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  ln X ~ N(0, σ²) 이라고 하자 (median은 늘 1에 고정된다).
+  σ가 커질수록 <b>오른쪽으로 길게 늘어진다</b> — 평균이 중앙값보다 훨씬 커진다.
+</p>
+
+<div class="sl">
+  <label>σ (로그값의 표준편차) <span class="val" id="ln-vs">0.70</span></label>
+  <input type="range" id="ln-s" min="0.1" max="1.6" step="0.01" value="0.7">
+</div>
+
+<canvas id="ln-pdf" width="900" height="230"></canvas>
+<div class="legend">
+  <span><i style="background:var(--accent)"></i> 밀도 f(x)</span>
+  <span><i style="background:var(--teal)"></i> 중앙값(median)</span>
+  <span><i style="background:var(--orange)"></i> 평균(mean)</span>
+  <span><i style="background:var(--pink)"></i> 최빈값(mode)</span>
+</div>
+
+<div class="tiles">
+  <div class="tile"><div class="t">최빈값 mode</div><div class="n" id="ln-mode">—</div><div class="f">e^(−σ²)</div></div>
+  <div class="tile ok"><div class="t">중앙값 median</div><div class="n" id="ln-med">1.00</div><div class="f">e^0 (고정)</div></div>
+  <div class="tile hi"><div class="t">평균 mean</div><div class="n" id="ln-mean">—</div><div class="f">e^(σ²/2)</div></div>
+  <div class="tile warn"><div class="t">평균 / 중앙값</div><div class="n" id="ln-ratio">—</div><div class="f">1보다 훨씬 크면 심하게 쏠린 것</div></div>
+</div>
+</div>
+
+<div class="note">
+  <b>⚠️ 정규분포와 달리 평균 · 중앙값 · 최빈값이 전부 다르다.</b> 그리고 항상
+  <b>최빈값 &lt; 중앙값 &lt; 평균</b> 순서다. "평균 소득"이 체감보다 늘 높게 느껴지는 이유가
+  이것이다 — 소수의 아주 큰 값이 평균만 끌어올린다 (중앙값은 그 영향을 덜 받는다).
+</div>
+
+<div class="link">
+  <b>오늘 랩에서 실제로 쓰인 값.</b> Lab 7의 소득 데이터는
+  <code>rng.lognormal(mean=8.0, sigma=0.7, size=N)</code>로 만들었다. 계산해 보면
+  <b>평균 ≈ 3,808.5</b>, <b>중앙값 ≈ 2,981.0</b>, <b>최빈값 ≈ 1,826.2</b>다.
+  평균이 중앙값보다 <b>28% 더 높다</b> — 히스토그램에서 오른쪽으로 치우쳐 보였던 것이
+  바로 이 구조 때문이다.
+</div>
+
+<h2>2. Student-t 분포 — 정규분포의 뚱뚱한 사촌</h2>
+
+<p>
+  1908년 기네스 맥주 양조장의 통계학자 <b>William Sealy Gosset</b>은 작은 표본으로
+  품질을 관리해야 했다. 표본이 작으면 <b>모집단의 진짜 표준편차 σ를 모르고, 표본
+  표준편차로 대신 추정</b>해야 하는데, 이 추정 오차 때문에 정규분포보다
+  <b>꼬리가 살짝 더 두꺼운</b> 분포가 필요했다. 회사 규정상 실명으로 논문을 낼 수 없어서
+  <b>"Student"</b>라는 필명을 썼고, 그 이름이 그대로 분포 이름이 됐다.
+</p>
+
+<div class="eq">
+  Student-t 분포는 모수가 <b>하나</b>다 — <b>자유도(degrees of freedom, df 또는 ν)</b>.
+  df가 작을수록 꼬리가 두껍고, <b>df → ∞ 이면 정확히 표준정규분포가 된다.</b>
+</div>
+
+<div class="viz">
+<h3>🔬 df를 움직이며 정규분포에 가까워지는 것을 본다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  주황색이 Student-t, 회색 점선이 표준정규분포다. df를 낮춰서 <b>양 끝이 얼마나 더
+  두꺼워지는지</b> 보자.
+</p>
+
+<div class="sl">
+  <label>df (자유도) <span class="val" id="t-vdf">3</span></label>
+  <input type="range" id="t-df" min="1" max="40" step="1" value="3">
+</div>
+
+<canvas id="t-pdf" width="900" height="230"></canvas>
+<div class="legend">
+  <span><i style="background:var(--orange)"></i> Student-t(df)</span>
+  <span><i style="background:#94a3b8"></i> 표준정규분포 N(0,1)</span>
+</div>
+
+<div class="tiles c3">
+  <div class="tile warn"><div class="t">P(|T| &gt; 3), Student-t</div><div class="n" id="t-p3">—</div><div class="f">이 df에서</div></div>
+  <div class="tile"><div class="t">P(|Z| &gt; 3), 정규분포</div><div class="n">0.270%</div><div class="f">고정값</div></div>
+  <div class="tile hi"><div class="t">배율</div><div class="n" id="t-ratio">—</div><div class="f">정규분포 대비 몇 배</div></div>
+</div>
+</div>
+
+<div class="note">
+  <b>⚠️ df = 3처럼 작을 때는 정규분포로 착각하면 위험을 크게 과소평가한다.</b>
+  df가 30 정도만 넘어도 육안으로는 정규분포와 거의 구별되지 않는다 — 슬라이더를
+  30 근처로 옮겨서 직접 확인해 보라.
+</div>
+
+<div class="link">
+  <b>오늘 랩에서 실제로 쓰인 값.</b> Lab 7의 수익률 데이터는
+  <code>stats.t.rvs(df=3, ...)</code>로 만든 뒤 표준편차 1.2로 맞춘 것이다.
+  실습 4에서 직접 셌듯이, 이 데이터의 <b>|z| &gt; 3인 날은 1.667%</b>였다 — 정규분포라면
+  나와야 할 <b>0.270%</b>의 <b>약 6.2배</b>다. 오늘 슬라이드에서 본 fat tail이
+  바로 이 df=3짜리 Student-t에서 나온 것이다.
+</div>
+
+<h2>3. 셋을 나란히 놓으면</h2>
+
+<table>
+  <tr><th style="width:120px"></th><th>정규분포</th><th>Lognormal</th><th>Student-t</th></tr>
+  <tr><td><b>정의역</b></td><td>모든 실수</td><td>양수만 (x &gt; 0)</td><td>모든 실수</td></tr>
+  <tr><td><b>모양</b></td><td>좌우 대칭</td><td>비대칭 — 오른쪽으로 긴 꼬리</td><td>좌우 대칭 — 꼬리만 더 두껍다</td></tr>
+  <tr><td><b>모수</b></td><td>μ, σ² (평균·분산)</td><td>μ, σ² (로그값의 평균·분산)</td><td>ν (자유도) 하나</td></tr>
+  <tr><td><b>전형적 원인</b></td><td>여러 작은 값을 <b>더한다</b></td><td>여러 작은 비율을 <b>곱한다</b></td><td>표준편차를 <b>표본으로 추정</b>한다</td></tr>
+  <tr><td><b>극단으로 가면</b></td><td>—</td><td>σ → 0 이면 정규분포에 가까워진다</td><td>ν → ∞ 이면 정확히 정규분포가 된다</td></tr>
+  <tr><td><b>이 랩에서</b></td><td>비교 기준(검은 곡선)</td><td>소득 데이터</td><td>수익률 데이터</td></tr>
+</table>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — 정규분포는 "더하기"의 결과다. 곱하기의 결과를 보고 싶으면
+  <b>lognormal</b>을, 표본으로 흔들리는 추정을 다루고 싶으면 <b>Student-t</b>를 쓴다.
+  셋 다 정규분포를 기준점으로 두고 있다는 점은 같다 — 하나는 로그를 취하면,
+  다른 하나는 자유도를 무한대로 보내면 정규분포로 돌아간다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 7 보충자료 &nbsp;·&nbsp;
+  Student-t는 Topic 14(가설검정의 t-검정)에서, 곱셈 구조는 Topic 10(중심극한정리)에서 다시 나온다 &nbsp;·&nbsp;
+  시험 범위가 아니다. 오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  // ================= 공용: 로그감마 (Lanczos 근사) =================
+  function logGamma(x){
+    const g = 7;
+    const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+      771.32342877765313, -176.61502916214059, 12.507343278686905,
+      -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+    if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - logGamma(1 - x);
+    x -= 1;
+    let a = c[0];
+    const t = x + g + 0.5;
+    for (let i = 1; i < g + 2; i++) a += c[i] / (x + i);
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+  }
+
+  function erf(x){
+    const sign = x < 0 ? -1 : 1; x = Math.abs(x);
+    const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+    const t = 1 / (1 + p * x);
+    const y = 1 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*Math.exp(-x*x);
+    return sign * y;
+  }
+  function normalPDF(x){ return Math.exp(-x*x/2) / Math.sqrt(2*Math.PI); }
+  function normalTail(k){ return 1 - 0.5*(1+erf(k/Math.SQRT2)); } // P(Z > k), k >= 0
+
+  // ================= 1. Lognormal =================
+  const lnCv = $("ln-pdf"), lnCx = lnCv.getContext("2d");
+
+  function lognormPDF(x, sigma){
+    if (x <= 0) return 0;
+    const lx = Math.log(x);
+    return Math.exp(-(lx*lx)/(2*sigma*sigma)) / (x * sigma * Math.sqrt(2*Math.PI));
+  }
+
+  function drawLognormal(sigma){
+    const W = lnCv.width, H = lnCv.height;
+    const PAD_L = 46, PAD_B = 30, PAD_T = 14, PAD_R = 14;
+    const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+    const XMAX = Math.max(4, Math.exp(2.6*sigma) + 1);
+    lnCx.clearRect(0,0,W,H);
+
+    function px(x){ return PAD_L + (x/XMAX)*plotW; }
+    let ymax = 0;
+    const N = 400;
+    const ys = [];
+    for (let i=0;i<=N;i++){ const x = XMAX*i/N; const y = lognormPDF(x, sigma); ys.push(y); if (y>ymax) ymax=y; }
+    function py(y){ return PAD_T + plotH - (y/ymax)*plotH; }
+
+    lnCx.strokeStyle = css("--line");
+    for (let x=0; x<=XMAX; x += Math.max(1, Math.round(XMAX/8))) {
+      const xx = px(x);
+      lnCx.beginPath(); lnCx.moveTo(xx, PAD_T); lnCx.lineTo(xx, H-PAD_B); lnCx.stroke();
+    }
+    lnCx.fillStyle = css("--muted"); lnCx.font = "11px Consolas, monospace"; lnCx.textAlign = "center";
+    for (let x=0; x<=XMAX; x += Math.max(1, Math.round(XMAX/8))) lnCx.fillText(x.toFixed(0), px(x), H-PAD_B+16);
+
+    lnCx.strokeStyle = css("--accent"); lnCx.lineWidth = 2.5;
+    lnCx.beginPath();
+    for (let i=0;i<=N;i++){ const x = XMAX*i/N; const xx=px(x), yy=py(ys[i]); if(i===0) lnCx.moveTo(xx,yy); else lnCx.lineTo(xx,yy); }
+    lnCx.stroke();
+
+    const mean = Math.exp(sigma*sigma/2), median = 1, mode = Math.exp(-sigma*sigma);
+    function marker(x, color){
+      if (x > XMAX) return;
+      lnCx.strokeStyle = color; lnCx.lineWidth = 2;
+      lnCx.beginPath(); lnCx.moveTo(px(x), PAD_T); lnCx.lineTo(px(x), H-PAD_B); lnCx.stroke();
+    }
+    marker(mode, css("--pink"));
+    marker(median, css("--teal"));
+    marker(mean, css("--orange"));
+
+    $("ln-mode").textContent = mode.toFixed(3);
+    $("ln-mean").textContent = mean.toFixed(3);
+    $("ln-ratio").textContent = (mean/median).toFixed(2) + "x";
+    $("ln-vs").textContent = sigma.toFixed(2);
+  }
+
+  $("ln-s").addEventListener("input", () => drawLognormal(+$("ln-s").value));
+  drawLognormal(0.7);
+
+  // ================= 2. Student-t =================
+  const tCv = $("t-pdf"), tCx = tCv.getContext("2d");
+
+  function tPDF(x, nu){
+    const logC = logGamma((nu+1)/2) - logGamma(nu/2) - 0.5*Math.log(nu*Math.PI);
+    return Math.exp(logC - (nu+1)/2 * Math.log(1 + x*x/nu));
+  }
+
+  function tTail(k, nu){
+    // P(T > k), k >= 0, 사다리꼴 적분 (k ~ k+60)
+    const steps = 3000, upper = k + 60;
+    const h = (upper-k)/steps;
+    let s = 0.5*(tPDF(k,nu) + tPDF(upper,nu));
+    for (let i=1;i<steps;i++) s += tPDF(k + i*h, nu);
+    return s * h;
+  }
+
+  function drawT(nu){
+    const W = tCv.width, H = tCv.height;
+    const PAD_L = 46, PAD_B = 30, PAD_T = 14, PAD_R = 14;
+    const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+    const XMAX = 6;
+    tCx.clearRect(0,0,W,H);
+
+    function px(x){ return PAD_L + ((x+XMAX)/(2*XMAX))*plotW; }
+    const N = 400;
+    const ysT = [], ysN = [];
+    let ymax = 0;
+    for (let i=0;i<=N;i++){
+      const x = -XMAX + 2*XMAX*i/N;
+      const yt = tPDF(x, nu), yn = normalPDF(x);
+      ysT.push(yt); ysN.push(yn);
+      if (yt>ymax) ymax=yt; if (yn>ymax) ymax=yn;
+    }
+    function py(y){ return PAD_T + plotH - (y/ymax)*plotH; }
+
+    tCx.strokeStyle = css("--line");
+    for (let x=-XMAX; x<=XMAX; x+=2) {
+      const xx = px(x);
+      tCx.beginPath(); tCx.moveTo(xx, PAD_T); tCx.lineTo(xx, H-PAD_B); tCx.stroke();
+    }
+    tCx.fillStyle = css("--muted"); tCx.font = "11px Consolas, monospace"; tCx.textAlign = "center";
+    for (let x=-XMAX; x<=XMAX; x+=2) tCx.fillText(x, px(x), H-PAD_B+16);
+
+    tCx.strokeStyle = "#94a3b8"; tCx.lineWidth = 2; tCx.setLineDash([5,4]);
+    tCx.beginPath();
+    for (let i=0;i<=N;i++){ const x=-XMAX+2*XMAX*i/N; const xx=px(x), yy=py(ysN[i]); if(i===0) tCx.moveTo(xx,yy); else tCx.lineTo(xx,yy); }
+    tCx.stroke();
+    tCx.setLineDash([]);
+
+    tCx.strokeStyle = css("--orange"); tCx.lineWidth = 2.5;
+    tCx.beginPath();
+    for (let i=0;i<=N;i++){ const x=-XMAX+2*XMAX*i/N; const xx=px(x), yy=py(ysT[i]); if(i===0) tCx.moveTo(xx,yy); else tCx.lineTo(xx,yy); }
+    tCx.stroke();
+
+    const p3t = 2*tTail(3, nu);
+    const p3n = 2*normalTail(3);
+    $("t-p3").textContent = (p3t*100).toFixed(3) + "%";
+    $("t-ratio").textContent = (p3t/p3n).toFixed(1) + "x";
+    $("t-vdf").textContent = nu;
+  }
+
+  $("t-df").addEventListener("input", () => drawT(+$("t-df").value));
+  drawT(3);
+})();
+</script>
+</body>
+</html>
