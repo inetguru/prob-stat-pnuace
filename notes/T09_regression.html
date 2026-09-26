@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>회귀와 회귀분석 — 어원과 최소제곱법</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card.mark{border-color:var(--accent); background:#eef1fe}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .sl{margin-bottom:10px}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .btnrow{display:flex; gap:8px; flex-wrap:wrap; margin:14px 0}
+  button{
+    background:var(--accent); color:#fff; border:none; border-radius:7px;
+    padding:9px 16px; font-size:13.5px; font-weight:700; cursor:pointer;
+    font-family:inherit;
+  }
+  button:hover{opacity:.88}
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft); text-align:center}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:19px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile .f{font-size:11px; color:var(--muted)}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  .tile.warn{border-color:var(--orange); background:#fdf1e3}
+  .tile.ok{border-color:var(--teal); background:#ecfdf7}
+  .legend{display:flex; gap:18px; font-size:13px; color:var(--body); margin-top:6px; flex-wrap:wrap}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .legend i{width:14px; height:3px; display:inline-block; border-radius:2px}
+  .legend i.dot{width:9px; height:9px; border-radius:50%}
+  canvas{max-width:100%; display:block}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>회귀와 회귀분석 — "되돌아간다"는 말이 왜 여기 있을까</h1>
+<p class="sub">
+  확률통계 · Topic 9 보충자료 — 슬라이드 <b>14번 "조건부 기댓값 — 회귀의 씨앗"</b>
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">슬라이드에서 본 것</span>
+    조건부 기댓값 <code>E[Y|X=x]</code>는 <b>x의 함수</b>이고, 그 곡선을
+    "회귀선"이라 부른다는 것. 그런데 왜 하필 <b>"회귀(regression)"</b>인가는 다루지 않았다.
+  </div>
+  <div class="card">
+    <span class="lbl">이 노트가 답하는 것</span>
+    "회귀"라는 이름이 <b>어디서 왔는지</b>(유전 연구), 그리고 그 조건부 기댓값을
+    데이터에서 실제로 어떻게 <b>추정하는지</b>(최소제곱법)를 시뮬레이션으로 확인한다.
+  </div>
+  <div class="card">
+    <span class="lbl">어디서 이어지는가</span>
+    회귀분석(선형회귀·다중회귀) 자체는 이 과목의 <b>심화 주제</b>다.
+    행렬이 필요해지는 지점부터는 <b>데이터과학입문</b>에서 본격적으로 다룬다.
+  </div>
+</div>
+
+<h2>1. "회귀(regression)"라는 말은 어디서 왔나</h2>
+
+<p>
+  "Regression"은 원래 <b>"되돌아감·퇴행"</b>이라는 뜻의 평범한 영어 단어다.
+  통계 용어가 된 것은 1880년대 영국의 과학자 <b>Francis Galton</b>이 부모와 자녀의
+  키를 조사하면서다.
+</p>
+
+<div class="eq">
+  키가 아주 <b>큰</b> 부모의 자녀는 부모보다 <b>작은</b> 경향이 있었고,
+  키가 아주 <b>작은</b> 부모의 자녀는 부모보다 <b>큰</b> 경향이 있었다 —
+  양쪽 다 전체 <b>평균 쪽으로 되돌아갔다.</b>
+</div>
+
+<p>
+  Galton은 이 현상을 <b>"regression toward mediocrity(평범함으로의 회귀)"</b>,
+  후에 <b>"regression toward the mean(평균으로의 회귀)"</b>이라 불렀다. 그는 이 관계를
+  직선으로 나타내는 방법도 함께 개발했는데, 이 직선을 <b>"regression line"</b>이라
+  이름 붙인 것이 오늘날 우리가 쓰는 용어의 출발점이다. 이후 그의 사촌
+  <b>Karl Pearson</b>을 비롯한 통계학자들이 이 방법을 일반화하면서, "회귀"는
+  <b>"두 변수 간의 관계를 직선(또는 곡선)으로 추정하는 기법 전체"</b>를 가리키는
+  이름으로 굳어졌다.
+</p>
+
+<div class="note">
+  <b>⚠️ 지금 우리가 쓰는 "회귀분석"이라는 이름은 그 기법이 무엇을 하는지 설명해주지 않는다.</b>
+  이름은 이 기법이 <b>처음 발견된 역사적 맥락</b>("극단값이 평균으로 되돌아가는 현상")만
+  물려받았을 뿐, 오늘날의 회귀분석은 그 원래 뜻과 무관하게 <b>"조건부 기댓값을
+  추정하는 일반적인 기법"</b>을 가리킨다.
+</div>
+
+<h2>2. 오늘 배운 조건부 기댓값이 바로 그 "회귀선"이다</h2>
+
+<p>
+  슬라이드 14의 정의를 다시 보자. <code>E[Y|X=x]</code>는 $x$ 마다 값이 하나씩
+  나오는 <b>함수</b>이고, 그 그래프가 곡선(또는 직선) 하나를 이룬다. 이 곡선이
+  <b>"x가 주어졌을 때 y를 가장 잘 예측하는 값"</b>이며, 회귀분석의 목표는 바로
+  이 함수를 <b>데이터로부터 추정</b>하는 것이다.
+</p>
+
+<div class="eq">
+  <b>단순선형회귀 모형</b> — 조건부 기댓값이 직선이라고 가정한다:<br>
+  Y = α + βX + ε, &nbsp; 즉 &nbsp; E[Y|X=x] = α + βx
+  <br><span style="font-size:13.5px; color:var(--muted)">
+  (ε는 평균 0인 잡음. α, β는 모수이며 데이터에서 추정해야 한다.)</span>
+</div>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">Galton이 발견한 것</span>
+    <b>현상</b>이다 — 극단적인 부모의 자녀가 평균 쪽으로 되돌아간다는 관찰.
+    확률변수 하나(부모 키)의 조건에 따라 다른 확률변수(자녀 키)의 평균이 어떻게
+    움직이는지에 대한 이야기다.
+  </div>
+  <div class="card mark">
+    <span class="lbl">오늘날 "회귀분석"</span>
+    <b>기법</b>이다 — 두 변수의 관계를 직선(또는 곡선)으로 추정하는 일반적인 도구.
+    현상으로서의 "평균 회귀"는 그 기법이 처음 발견된 특수한 사례일 뿐이다.
+  </div>
+</div>
+
+<div class="viz">
+<h3>🔬 시뮬레이션 ① — Galton의 키 실험 재현</h3>
+<p style="font-size:14.5px; margin-top:0">
+  부모 키 <code>X ~ N(170, 6²)</code>, 자녀 키는 상관계수 <code>ρ</code>를 갖는
+  이변량정규분포에서 뽑는다: <code>Y = 170 + ρ(X−170) + √(1−ρ²)·6·Z</code>.
+  ρ를 낮춰서 <b>극단적인 부모의 자녀가 평균 쪽으로 더 세게 되돌아가는 것</b>을 확인해 보자.
+</p>
+
+<div class="sl">
+  <label>상관계수 ρ (부모-자녀 키의 닮은 정도) <span class="val" id="g-vr">0.50</span></label>
+  <input type="range" id="g-r" min="0" max="0.9" step="0.01" value="0.5">
+</div>
+
+<div class="btnrow">
+  <button id="g-resample">🎲 부모·자녀 300쌍 다시 뽑기</button>
+</div>
+
+<canvas id="g-scatter" width="900" height="280"></canvas>
+<div class="legend">
+  <span><i class="dot" style="background:var(--muted)"></i> 부모·자녀 한 쌍</span>
+  <span><i style="background:var(--accent)"></i> 회귀직선 E[Y|X=x]</span>
+  <span><i style="background:var(--pink)"></i> Y=X (변화 없음 기준선)</span>
+</div>
+
+<div class="tiles">
+  <div class="tile"><div class="t">전체 평균 키</div><div class="n" id="g-mean">170.0</div><div class="f">cm, 모든 세대 공통</div></div>
+  <div class="tile warn"><div class="t">상위 10% 부모 평균</div><div class="n" id="g-topx">—</div><div class="f">유난히 큰 부모들</div></div>
+  <div class="tile hi"><div class="t">그 자녀들의 평균</div><div class="n" id="g-topy">—</div><div class="f">부모보다 평균에 가까워짐</div></div>
+  <div class="tile ok"><div class="t">표본상관계수</div><div class="n" id="g-corr">—</div><div class="f">회귀직선의 기울기이기도 하다</div></div>
+</div>
+</div>
+
+<div class="note">
+  <b>⚠️ "자녀 세대가 평평해진다"는 뜻이 아니다.</b> 위 타일에서 자녀들의
+  <b>평균</b>은 부모 그룹의 평균보다 전체 평균에 가까워지지만, 자녀 세대 전체의
+  <b>키 분포(분산)</b>는 부모 세대와 똑같이 유지되도록 시뮬레이션을 짰다
+  (그래서 다음 세대의 부모 중에서도 다시 극단적으로 큰 사람이 나온다 — 인류의 키가
+  세대를 거듭할수록 한 점으로 수렴하지 않는 이유다).
+</div>
+
+<h2>3. 최소제곱법 — 회귀직선을 데이터에서 직접 구한다</h2>
+
+<p>
+  실제로는 참값 α, β를 모른다. 가진 것은 표본 $(x_1,y_1),\dots,(x_n,y_n)$ 뿐이다.
+  <b>최소제곱법(least squares)</b>은 아래 오차의 제곱합을 최소로 만드는 직선을 고른다.
+</p>
+
+<div class="eq">
+  β̂ = Σ(xᵢ−x̄)(yᵢ−ȳ) / Σ(xᵢ−x̄)², &nbsp; α̂ = ȳ − β̂x̄
+  <br><span style="font-size:13.5px; color:var(--muted)">
+  (Topic 9의 공분산·분산으로 다시 쓰면 β̂ = Cov[X,Y] / Var[X] 다.)</span>
+</div>
+
+<div class="viz">
+<h3>🔬 시뮬레이션 ② — 잡음 속에서 직선을 다시 찾아낸다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  참값 β(회색 점선)를 정해 데이터를 만든 뒤, 그 데이터만 보고 최소제곱법으로
+  β̂(파란 실선)을 추정한다. 잡음 σ를 키우거나 표본 수 n을 줄이면 추정이 얼마나
+  흔들리는지 확인해 보자.
+</p>
+
+<div class="sl">
+  <label>참값 β (실제 기울기) <span class="val" id="r-vb">1.20</span></label>
+  <input type="range" id="r-b" min="-2" max="2" step="0.05" value="1.2">
+</div>
+<div class="sl">
+  <label>잡음 σ <span class="val" id="r-vs">2.0</span></label>
+  <input type="range" id="r-s" min="0" max="6" step="0.1" value="2.0">
+</div>
+<div class="sl">
+  <label>표본 수 n <span class="val" id="r-vn">40</span></label>
+  <input type="range" id="r-n" min="10" max="200" step="5" value="40">
+</div>
+
+<div class="btnrow">
+  <button id="r-resample">🎲 데이터 다시 뽑기</button>
+</div>
+
+<canvas id="r-scatter" width="900" height="280"></canvas>
+<div class="legend">
+  <span><i class="dot" style="background:var(--muted)"></i> 표본 (xᵢ, yᵢ)</span>
+  <span><i style="background:#94a3b8"></i> 참값 직선 (모르는 진실)</span>
+  <span><i style="background:var(--accent)"></i> 최소제곱 적합선 (데이터로 추정)</span>
+</div>
+
+<div class="tiles">
+  <div class="tile"><div class="t">참값 β</div><div class="n" id="r-btrue">—</div><div class="f">시뮬레이션이 정한 진실</div></div>
+  <div class="tile hi"><div class="t">적합값 β̂</div><div class="n" id="r-bhat">—</div><div class="f">데이터만 보고 추정</div></div>
+  <div class="tile ok"><div class="t">상관계수 ρ̂</div><div class="n" id="r-corr">—</div><div class="f">Topic 9의 그 상관계수다</div></div>
+  <div class="tile warn"><div class="t">R²</div><div class="n" id="r-r2">—</div><div class="f">직선이 설명하는 흩어짐의 비율</div></div>
+</div>
+</div>
+
+<div class="link">
+  <b>β̂이 왜 항상 참값과 정확히 같지 않은가.</b> 매번 <b>다시 뽑기</b>를 누르면
+  β̂이 조금씩 달라진다 — 표본이 유한하기 때문에 생기는 <b>추정 오차</b>다.
+  n을 늘리면 β̂이 참값 주변에 더 좁게 모이는 것을 확인할 수 있다 (Topic 10
+  대수의 법칙과 같은 이야기다 — 표본이 많아질수록 추정이 참값에 가까워진다).
+</div>
+
+<h2>4. 정리 — 한 단어 안의 두 가지 뜻</h2>
+
+<table>
+  <tr><th style="width:160px"></th><th>Galton이 발견한 "회귀"</th><th>오늘날의 "회귀분석"</th></tr>
+  <tr><td><b>정체</b></td><td>관찰된 <b>현상</b></td><td>추정하는 <b>기법</b></td></tr>
+  <tr><td><b>대상</b></td><td>극단값이 평균으로 되돌아가는 것</td><td>조건부 기댓값 E[Y|X=x]를 추정하는 것</td></tr>
+  <tr><td><b>범위</b></td><td>부모-자녀 키라는 특수한 사례</td><td>변수 간 관계 전반에 적용되는 일반적 도구</td></tr>
+  <tr><td><b>오늘 실습</b></td><td>시뮬레이션 ① (Galton 재현)</td><td>시뮬레이션 ② (최소제곱법)</td></tr>
+  <tr><td><b>이 과목에서</b></td><td>조건부 기댓값의 한 예시로만 다룸</td><td><span class="tag">심화 주제</span> — 선형대수가 필요해지는 지점부터 데이터과학입문</td></tr>
+</table>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — "회귀"라는 이름은 Galton이 우연히 발견한 <b>현상</b>에서 왔지만,
+  오늘날 우리가 배우는 "회귀분석"은 그 이름을 물려받은 <b>완전히 다른 목적의 도구</b>다.
+  다만 둘을 잇는 다리는 여전히 남아 있다 — <b>조건부 기댓값</b>이라는 개념이다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 9 보충자료 &nbsp;·&nbsp;
+  회귀분석(선형회귀·다중회귀) 자체는 이 과목의 심화 주제이며 시험 범위가 아니다 &nbsp;·&nbsp;
+  오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  function randn(){
+    // Box-Muller
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  function mean(a){ return a.reduce((s,v)=>s+v,0) / a.length; }
+
+  function stats(xs, ys){
+    const n = xs.length, mx = mean(xs), my = mean(ys);
+    let sxx=0, syy=0, sxy=0;
+    for (let i=0;i<n;i++){ const dx=xs[i]-mx, dy=ys[i]-my; sxx+=dx*dx; syy+=dy*dy; sxy+=dx*dy; }
+    const beta = sxy/sxx, alpha = my - beta*mx;
+    const r = sxy / Math.sqrt(sxx*syy);
+    const r2 = r*r;
+    return {mx, my, beta, alpha, r, r2};
+  }
+
+  // 공용 산점도 + 직선 그리기
+  function drawScatter(cv, xs, ys, lines, opts){
+    opts = opts || {};
+    const ctx = cv.getContext("2d");
+    const W = cv.width, H = cv.height;
+    const PAD_L = 52, PAD_B = 32, PAD_T = 14, PAD_R = 18;
+    const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+    ctx.clearRect(0,0,W,H);
+
+    let xmin = Math.min(...xs), xmax = Math.max(...xs);
+    let ymin = Math.min(...ys), ymax = Math.max(...ys);
+    if (opts.forceRange){ xmin=opts.forceRange.xmin; xmax=opts.forceRange.xmax; ymin=opts.forceRange.ymin; ymax=opts.forceRange.ymax; }
+    const xpad = (xmax-xmin)*0.08 || 1, ypad = (ymax-ymin)*0.12 || 1;
+    xmin -= xpad; xmax += xpad; ymin -= ypad; ymax += ypad;
+
+    function px(x){ return PAD_L + (x-xmin)/(xmax-xmin)*plotW; }
+    function py(y){ return PAD_T + plotH - (y-ymin)/(ymax-ymin)*plotH; }
+
+    // 격자 + 눈금
+    ctx.strokeStyle = css("--line"); ctx.fillStyle = css("--muted");
+    ctx.font = "11px Consolas, monospace";
+    const NT = 6;
+    ctx.textAlign = "center";
+    for (let i=0;i<=NT;i++){
+      const x = xmin + (xmax-xmin)*i/NT;
+      const xx = px(x);
+      ctx.beginPath(); ctx.moveTo(xx, PAD_T); ctx.lineTo(xx, H-PAD_B); ctx.stroke();
+      ctx.fillText(x.toFixed(opts.xdec ?? 0), xx, H-PAD_B+16);
+    }
+    ctx.textAlign = "right";
+    for (let i=0;i<=NT;i++){
+      const y = ymin + (ymax-ymin)*i/NT;
+      const yy = py(y);
+      ctx.beginPath(); ctx.moveTo(PAD_L, yy); ctx.lineTo(W-PAD_R, yy); ctx.stroke();
+      ctx.fillText(y.toFixed(opts.ydec ?? 0), PAD_L-8, yy+4);
+    }
+
+    // 점
+    ctx.fillStyle = css("--muted");
+    for (let i=0;i<xs.length;i++){
+      ctx.beginPath();
+      ctx.arc(px(xs[i]), py(ys[i]), 3, 0, 2*Math.PI);
+      ctx.fill();
+    }
+
+    // 직선들 {slope, intercept, color, dash}
+    (lines||[]).forEach(L => {
+      ctx.strokeStyle = L.color; ctx.lineWidth = L.width || 2.5;
+      ctx.setLineDash(L.dash || []);
+      ctx.beginPath();
+      const y1 = L.slope*xmin + L.intercept, y2 = L.slope*xmax + L.intercept;
+      ctx.moveTo(px(xmin), py(y1));
+      ctx.lineTo(px(xmax), py(y2));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+  }
+
+  // ================= 시뮬레이션 ① Galton =================
+  const MEAN_H = 170, SD_H = 6;
+  const gCv = $("g-scatter");
+  let gParents = [], gChildren = [];
+
+  function galtonResample(rho){
+    gParents = []; gChildren = [];
+    const n = 300;
+    for (let i=0;i<n;i++){
+      const x = MEAN_H + SD_H*randn();
+      const y = MEAN_H + rho*(x-MEAN_H) + Math.sqrt(Math.max(0,1-rho*rho))*SD_H*randn();
+      gParents.push(x); gChildren.push(y);
+    }
+  }
+
+  function drawGalton(){
+    const rho = +$("g-r").value;
+    $("g-vr").textContent = rho.toFixed(2);
+
+    const s = stats(gParents, gChildren);
+    drawScatter(gCv, gParents, gChildren, [
+      {slope: rho, intercept: MEAN_H*(1-rho), color: css("--accent"), width: 2.5},
+      {slope: 1, intercept: 0, color: css("--pink"), width: 1.5, dash: [5,4]}
+    ], {xdec:0, ydec:0});
+
+    // 상위 10% 부모와 그 자녀들의 평균
+    const idx = gParents.map((v,i)=>i).sort((a,b)=>gParents[b]-gParents[a]);
+    const topN = Math.max(1, Math.round(gParents.length*0.10));
+    const topIdx = idx.slice(0, topN);
+    const topXmean = mean(topIdx.map(i=>gParents[i]));
+    const topYmean = mean(topIdx.map(i=>gChildren[i]));
+
+    $("g-mean").textContent = MEAN_H.toFixed(1);
+    $("g-topx").textContent = topXmean.toFixed(1);
+    $("g-topy").textContent = topYmean.toFixed(1);
+    $("g-corr").textContent = s.r.toFixed(2);
+  }
+
+  $("g-r").addEventListener("input", drawGalton);
+  $("g-resample").addEventListener("click", () => { galtonResample(+$("g-r").value); drawGalton(); });
+  galtonResample(0.5);
+  drawGalton();
+
+  // ================= 시뮬레이션 ② 최소제곱법 =================
+  const rCv = $("r-scatter");
+  let rXs = [], rYs = [];
+
+  function regResample(beta, sigma, n){
+    rXs = []; rYs = [];
+    for (let i=0;i<n;i++){
+      const x = -5 + 10*Math.random();
+      const y = beta*x + sigma*randn();
+      rXs.push(x); rYs.push(y);
+    }
+  }
+
+  function drawReg(){
+    const beta = +$("r-b").value, sigma = +$("r-s").value, n = +$("r-n").value;
+    $("r-vb").textContent = beta.toFixed(2);
+    $("r-vs").textContent = sigma.toFixed(1);
+    $("r-vn").textContent = n;
+
+    const s = stats(rXs, rYs);
+    drawScatter(rCv, rXs, rYs, [
+      {slope: beta, intercept: 0, color: "#94a3b8", width: 2, dash: [5,4]},
+      {slope: s.beta, intercept: s.alpha, color: css("--accent"), width: 2.5}
+    ], {xdec:1, ydec:1});
+
+    $("r-btrue").textContent = beta.toFixed(2);
+    $("r-bhat").textContent = s.beta.toFixed(2);
+    $("r-corr").textContent = s.r.toFixed(2);
+    $("r-r2").textContent = s.r2.toFixed(2);
+  }
+
+  function regResampleAndDraw(){
+    regResample(+$("r-b").value, +$("r-s").value, +$("r-n").value);
+    drawReg();
+  }
+
+  ["r-b","r-s","r-n"].forEach(id => $(id).addEventListener("input", regResampleAndDraw));
+  $("r-resample").addEventListener("click", regResampleAndDraw);
+  regResampleAndDraw();
+})();
+</script>
+</body>
+</html>
