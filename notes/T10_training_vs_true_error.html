@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>훈련 오차와 실제 오차</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  a{color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cap{font-size:13.5px; color:var(--muted)}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card.mark{border-color:var(--accent); background:#eef1fe}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .sl{margin-bottom:10px}
+  .sl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .sl .val{float:right; font-family:Consolas,monospace; color:var(--accent)}
+  .sl input[type=range]{width:100%; accent-color:var(--accent)}
+  .btnrow{display:flex; gap:8px; flex-wrap:wrap; margin:14px 0}
+  button{
+    background:var(--accent); color:#fff; border:none; border-radius:7px;
+    padding:9px 16px; font-size:13.5px; font-weight:700; cursor:pointer;
+    font-family:inherit;
+  }
+  button:hover{opacity:.88}
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft); text-align:center}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:19px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile .f{font-size:11px; color:var(--muted)}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  .tile.warn{border-color:var(--orange); background:#fdf1e3}
+  .tile.ok{border-color:var(--teal); background:#ecfdf7}
+  .legend{display:flex; gap:18px; font-size:13px; color:var(--body); margin-top:6px; flex-wrap:wrap}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .legend i{width:14px; height:3px; display:inline-block; border-radius:2px}
+  .legend i.dot{width:9px; height:9px; border-radius:50%}
+  .legend i.box{width:14px; height:10px; border-radius:2px}
+  canvas{max-width:100%; display:block}
+  .tag{display:inline-block; font-size:12px; font-weight:800; color:var(--purple);
+       background:#f5f3ff; border-radius:3px; padding:1px 7px}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>훈련 오차와 실제 오차 — 모델은 왜 새 데이터에서 더 못할까</h1>
+<p class="sub">
+  확률통계 · Topic 10 보충자료 — 슬라이드 <b>23번 "Hoeffding 부등식"</b> ·
+  <b>32번 "오늘 배운 것이 AI의 어디에 있나"</b>
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">슬라이드에서 본 것</span>
+    Hoeffding 부등식이 머신러닝에서 <b>"훈련 오차와 실제 오차가 얼마나 다를 수 있나"</b>를
+    따질 때 쓰인다는 한 문장. 그리고 "훈련 데이터의 평균 손실로 진짜 손실을 대신해도 되는 이유는 LLN"이라는 말.
+  </div>
+  <div class="card">
+    <span class="lbl">이 노트가 답하는 것</span>
+    두 오차가 <b>각각 무엇인지</b>, 둘이 <b>왜, 얼마나</b> 다른지.
+    차이의 원인은 두 가지다 — <b>우연</b>(표본이 유한하다)과 <b>선택</b>(데이터를 보고 모델을 골랐다).
+  </div>
+  <div class="card">
+    <span class="lbl">어디서 이어지는가</span>
+    Topic 3 <b>손실함수와 Risk</b> · Topic 1 <b>train/test 나누기</b> ·
+    Topic 12 <b>MLE</b> · Topic 14 <b>다중검정</b>. 일반화 이론(generalization bound)은 <span class="tag">심화 주제</span>다.
+  </div>
+</div>
+
+<h2>1. 두 오차는 무엇인가 — "세 개의 평균"과 같은 구조</h2>
+
+<p>
+  분류 모델 <code>h</code> 하나가 있다. 데이터 한 개 <code>(x, y)</code>를 넣어서
+  <b>틀리면 1, 맞히면 0</b>을 적는다 (0-1 손실). 이 0과 1의 평균을 <b>어디서</b> 내느냐에 따라
+  오차의 이름이 갈린다.
+</p>
+
+<div class="eq">
+  <b>실제 오차</b> (true error, risk) &nbsp; R(h) = P[ h(X) ≠ Y ] = E[손실]
+  <br><span class="cap">세상에서 앞으로 들어올 <b>모든</b> 데이터에서 틀릴 확률 — 모평균 μ 에 해당한다.</span>
+  <br><br>
+  <b>훈련 오차</b> (training error, 경험적 위험) &nbsp; R̂ₙ(h) = (1/n) · Σ 손실ᵢ
+  <br><span class="cap">가진 데이터 n 개에서 틀린 비율 — 표본평균에 해당한다.</span>
+</div>
+
+<table>
+  <tr><th style="width:150px"></th><th>실제 오차 R(h)</th><th>훈련 오차 R̂ₙ(h)</th></tr>
+  <tr><td><b>슬라이드 11로 보면</b></td><td>모평균 <b>μ</b> — 상수</td><td>표본평균 X̄ₙ 의 <b>실현값</b> x̄ₙ</td></tr>
+  <tr><td><b>계산할 수 있나</b></td><td>✗ — 세상 전체를 볼 수 없다</td><td>✓ — 가진 데이터로 바로 계산한다</td></tr>
+  <tr><td><b>알고 싶은가</b></td><td>✓ — 배포한 뒤의 성능이 이것이다</td><td>그 자체로는 아니다 — 실제 오차의 <b>추정값</b>일 뿐이다</td></tr>
+  <tr><td><b>스팸 필터 예</b></td><td>앞으로 들어올 수백만 통에서 틀릴 비율 = ?</td><td>학습에 쓴 1,000통 중 30통을 틀렸다 = 3%</td></tr>
+</table>
+
+<p>
+  Topic 3 보충자료 <a href="../../T03_discrete-rv/notes/loss_function.html">손실함수와 Risk</a>에서
+  "기계학습은 손실의 <b>기댓값</b>(Risk)을 줄이는 일"이라고 했다. 그 Risk가 실제 오차다.
+  그런데 기댓값은 계산할 수 없으니, 학습은 늘 <b>훈련 오차를 대신 줄인다</b>
+  (경험적 위험 최소화, ERM). 이 대체가 정당한지가 이 노트의 질문이다.
+</p>
+
+<h2>2. 모델이 하나뿐이라면 — 차이는 "우연"뿐이다</h2>
+
+<p>
+  데이터를 보기 <b>전에</b> 모델이 이미 정해져 있다고 하자. 그러면 각 데이터에서의 손실은
+  실제 오차 <code>p</code>를 확률로 하는 <b>Bernoulli(p)</b>이고, 데이터가 IID라면 손실들도 IID다.
+  훈련 오차는 그냥 <b>동전 던지기의 표본평균</b>이 된다.
+</p>
+
+<ul>
+  <li><b>LLN</b> — n이 커지면 훈련 오차는 실제 오차로 간다. ERM이 말이 되는 이유다.</li>
+  <li><b>치우침이 없다</b> — E[훈련 오차] = p. 좋게 나올 때도, 나쁘게 나올 때도 있다.</li>
+  <li><b>흔들림의 크기</b> — 표준편차 √(p(1−p)/n). n = 100, p = 0.3 이면 약 <b>0.046</b>.</li>
+  <li><b>Hoeffding</b> — 손실이 0 아니면 1이라 <code>[0, 1]</code> 조건을 자동으로 만족한다.
+      분포를 전혀 몰라도 아래처럼 말할 수 있다.</li>
+</ul>
+
+<div class="eq">
+  P[ |훈련 오차 − 실제 오차| ≥ ε ] ≤ 2·exp(−2nε²)
+  <br><span class="cap">
+  95% 확신으로 말할 수 있는 폭은 ε = √( ln(2/0.05) / (2n) ) —
+  n = 100 이면 <b>±0.136</b>, n = 1,000 이면 <b>±0.043</b>.
+  (Chebyshev·Hoeffding은 분포를 몰라도 되는 대신 느슨하다 — 실제 흔들림은 이보다 훨씬 작다.)</span>
+</div>
+
+<div class="viz">
+<h3>🔬 시뮬레이션 ① — 모델 하나, 훈련 데이터 1,000세트</h3>
+<p style="font-size:14.5px; margin-top:0">
+  실제 오차가 <code>p</code>인 모델 하나를 고정해 두고, 크기 <code>n</code>인 훈련 데이터를 1,000번 새로 뽑아
+  훈련 오차를 1,000개 모은다. 히스토그램이 <b>p를 중심으로 좌우 대칭</b>이고,
+  n을 키우면 <b>좁아지는</b> 것을 확인한다. 초록 띠가 Hoeffding의 95% 폭이다.
+</p>
+
+<div class="sl">
+  <label>실제 오차 p <span class="val" id="a-vp">0.30</span></label>
+  <input type="range" id="a-p" min="0.05" max="0.5" step="0.01" value="0.30">
+</div>
+<div class="sl">
+  <label>훈련 데이터 크기 n <span class="val" id="a-vn">100</span></label>
+  <input type="range" id="a-n" min="20" max="2000" step="10" value="100">
+</div>
+<div class="btnrow">
+  <button id="a-go">🎲 훈련 데이터 1,000세트 다시 뽑기</button>
+</div>
+
+<canvas id="a-cv" width="900" height="272"></canvas>
+<div class="legend">
+  <span><i class="box" style="background:#c7cdf5"></i> 훈련 오차 1,000개의 히스토그램</span>
+  <span><i style="background:var(--orange)"></i> 실제 오차 p</span>
+  <span><i class="box" style="background:#ccefe9"></i> Hoeffding 95% 띠 p ± ε</span>
+</div>
+
+<div class="tiles">
+  <div class="tile warn"><div class="t">실제 오차 p</div><div class="n" id="a-t1">—</div><div class="f">모른다고 가정하는 참값</div></div>
+  <div class="tile hi"><div class="t">훈련 오차의 평균</div><div class="n" id="a-t2">—</div><div class="f">p 와 거의 같다 — 치우침 없음</div></div>
+  <div class="tile"><div class="t">흔들림 (표준편차)</div><div class="n" id="a-t3">—</div><div class="f" id="a-t3f">이론 —</div></div>
+  <div class="tile ok"><div class="t">띠 밖으로 나간 비율</div><div class="n" id="a-t4">—</div><div class="f" id="a-t4f">Hoeffding 보장 ≤ 5%</div></div>
+</div>
+</div>
+
+<h2>3. 데이터를 보고 모델을 고르면 — 차이에 "선택"이 더해진다</h2>
+
+<p>
+  실제 학습은 모델을 하나만 쓰지 않는다. 수많은 후보(가중치 조합) 중에서
+  <b>바로 이 훈련 데이터에서 오차가 가장 작은 것</b>을 고른다. 이 순간 2절의 계산이 깨진다.
+</p>
+
+<div class="note">
+  <b>⚠️ 극단적인 사고 실험.</b> 후보 모델 100개가 있는데 <b>전부 실제 오차가 30%</b>로 똑같이 좋다고 하자.
+  훈련 데이터 100개에서 각각의 훈련 오차를 재면 운에 따라 22%, 35%, 27% … 로 흩어진다.
+  그중 <b>가장 작은 것</b>을 고르면 그 모델의 훈련 오차는 평균 <b>약 19%</b>다.
+  그런데 그 모델의 실제 오차는 여전히 <b>30%</b>다. 고른 것은 "좋은 모델"이 아니라 "운이 좋았던 모델"이다.
+</div>
+
+<p>
+  Topic 10의 <b>도박사의 오류</b>(슬라이드 14)를 떠올리면 된다. 동전 100개를 각각 100번 던져서 앞면이 가장
+  적게 나온 동전을 골라도, 그 동전이 다음에도 앞면이 적게 나오지는 않는다. 과거의 운은 이어지지 않는다.
+  이 체계적인 낙관을 <b>선택 편향</b>(selection bias)이라 부르고, 훈련 데이터에서만 좋은 이 현상이
+  <b>과적합</b>(overfitting)의 확률적인 뿌리다.
+</p>
+
+<div class="viz">
+<h3>🔬 시뮬레이션 ② — 똑같이 좋은 후보 M 개 중에서 "최고"를 고른다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  후보 M 개는 모두 실제 오차가 <b>0.30</b>이다. 같은 훈련 데이터 n 개로 각자의 훈련 오차를 잰 뒤
+  <b>가장 작은 것</b>을 고른다. 그다음 그 모델을 <b>한 번도 안 본 테스트 데이터</b> n 개로 다시 잰다.
+</p>
+
+<div class="sl">
+  <label>후보 모델 수 M <span class="val" id="b-vm">100</span></label>
+  <input type="range" id="b-m" min="0" max="9" step="1" value="6">
+</div>
+<div class="sl">
+  <label>훈련·테스트 데이터 크기 n <span class="val" id="b-vn">100</span></label>
+  <input type="range" id="b-n" min="20" max="2000" step="10" value="100">
+</div>
+<div class="btnrow">
+  <button id="b-go">🎲 한 번 해 보기 (새 훈련·테스트 데이터)</button>
+</div>
+
+<canvas id="b-cv" width="900" height="242"></canvas>
+<div class="legend">
+  <span><i class="dot" style="background:var(--muted)"></i> 후보 M 개의 훈련 오차</span>
+  <span><i class="dot" style="background:var(--pink)"></i> 골라낸 모델 (훈련 오차 최소)</span>
+  <span><i style="background:var(--orange)"></i> 모든 후보의 실제 오차 0.30</span>
+</div>
+
+<div class="tiles">
+  <div class="tile warn"><div class="t">골라낸 모델의 훈련 오차</div><div class="n" id="b-t1">—</div><div class="f">좋아 보인다</div></div>
+  <div class="tile"><div class="t">그 모델의 실제 오차</div><div class="n">0.300</div><div class="f">고르기 전과 똑같다</div></div>
+  <div class="tile ok"><div class="t">테스트 오차</div><div class="n" id="b-t3">—</div><div class="f">새 데이터에서 다시 잰 값</div></div>
+  <div class="tile hi"><div class="t">평균 낙관 편향</div><div class="n" id="b-t4">—</div><div class="f">0.30 − E[최소 훈련 오차] (정확 계산)</div></div>
+</div>
+
+<h3 style="margin-top:28px">후보가 많을수록 훈련 오차는 더 거짓말을 한다</h3>
+<p style="font-size:14.5px; margin-top:0">
+  아래 곡선은 현재 n 에서 M 을 바꿔 가며 <b>평균 낙관 편향</b>을 정확히 계산한 것이다(시뮬레이션이 아니라
+  이항분포로 계산). 점선은 Hoeffding을 후보 M 개에 한꺼번에 적용한 <b>보장 폭</b>
+  √( ln(2M/0.05) / (2n) ) — 편향은 항상 이 선 아래에 있다.
+</p>
+<canvas id="b-cv2" width="900" height="242"></canvas>
+<div class="legend">
+  <span><i style="background:var(--accent)"></i> 평균 낙관 편향 (정확값)</span>
+  <span><i style="background:var(--muted)"></i> Hoeffding + 합집합 한계 (95%)</span>
+  <span><i class="dot" style="background:var(--pink)"></i> 지금 고른 M</span>
+</div>
+</div>
+
+<table>
+  <tr><th>후보 수 M</th><th class="num">n = 100 일 때<br>골라낸 모델의 훈련 오차</th><th class="num">낙관 편향</th><th class="num">n = 1,000 일 때<br>훈련 오차</th><th class="num">낙관 편향</th></tr>
+  <tr><td>1 (고르지 않음)</td><td class="num">0.300</td><td class="num">0.000</td><td class="num">0.300</td><td class="num">0.000</td></tr>
+  <tr><td>10</td><td class="num">0.231</td><td class="num">0.069</td><td class="num">0.278</td><td class="num">0.022</td></tr>
+  <tr><td>100</td><td class="num">0.190</td><td class="num">0.111</td><td class="num">0.264</td><td class="num">0.036</td></tr>
+  <tr><td>1,000</td><td class="num">0.160</td><td class="num">0.141</td><td class="num">0.254</td><td class="num">0.046</td></tr>
+</table>
+<p style="font-size:13.5px; color:var(--muted); margin-top:-8px">
+  실제 오차는 모든 후보가 0.300. 표의 값은 이항분포로 계산한 기댓값이다.
+</p>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">표에서 읽을 것 ①</span>
+    <b>후보가 많을수록</b>(모델이 복잡할수록) 편향이 커진다. 다만 M 이 10배가 될 때 편향은
+    훨씬 느리게 는다 — 대략 <b>√(ln M)</b> 에 비례한다.
+  </div>
+  <div class="card mark">
+    <span class="lbl">표에서 읽을 것 ②</span>
+    <b>데이터가 많을수록</b> 편향이 줄어든다 — 대략 <b>1/√n</b> 에 비례한다. 오늘 배운 표준오차의
+    그 √n 이다. "복잡한 모델일수록 데이터가 더 필요하다"는 말의 정량적 근거다.
+  </div>
+</div>
+
+<h2>4. 극단 — 외워 버리는 모델</h2>
+
+<p>
+  후보가 사실상 무한히 많으면 어떻게 될까. 가장 극단적인 모델은 <b>훈련 데이터를 통째로 외우는</b> 표다.
+  "이 이메일이면 스팸, 저 이메일이면 정상"을 1,000통 모두 적어 두고, 처음 보는 메일은 동전을 던져 정한다.
+</p>
+
+<table>
+  <tr><th></th><th class="num">훈련 오차</th><th class="num">실제(테스트) 오차</th></tr>
+  <tr><td>외우는 모델</td><td class="num">0%</td><td class="num">약 50% — 동전 던지기</td></tr>
+  <tr><td>단순한 규칙 ("무료", "당첨"이 있으면 스팸)</td><td class="num">8%</td><td class="num">9% 안팎</td></tr>
+</table>
+<p style="font-size:13.5px; color:var(--muted); margin-top:-8px">
+  아래 행은 설명용으로 든 가상의 수치다.
+</p>
+
+<p>
+  훈련 오차만 보면 외우는 모델이 완벽하다. 하지만 그 0%는 <b>아무것도 말해 주지 않는다.</b>
+  반대로 단순한 규칙은 훈련 오차와 실제 오차가 거의 같다 — 후보가 적어서 선택 편향이 작기 때문이다.
+</p>
+
+<h2>5. 그래서 데이터를 나눈다 — 세 번째 오차, 테스트 오차</h2>
+
+<table>
+  <tr><th style="width:130px"></th><th>계산에 쓴 데이터</th><th>실제 오차와의 관계</th><th>무엇에 쓰나</th></tr>
+  <tr><td><b>훈련 오차</b></td><td>모델을 <b>고르는 데 쓴</b> 데이터</td><td>우연 + 선택 → <b>낙관적으로 치우친다</b></td><td>학습(ERM)</td></tr>
+  <tr><td><b>검증 오차</b></td><td>여러 모델·설정 중 하나를 <b>고르는 데 쓴</b> 데이터</td><td>후보가 적어 편향은 작지만 0은 아니다</td><td>모델 선택</td></tr>
+  <tr><td><b>테스트 오차</b></td><td>모든 선택이 끝난 뒤 <b>처음 보는</b> 데이터</td><td>우연만 남는다 → <b>치우침 없음</b></td><td>최종 성능 보고</td></tr>
+</table>
+
+<p>
+  테스트 데이터는 선택에 관여하지 않았으므로, 그 시점의 모델은 2절처럼 <b>"미리 정해진 모델 하나"</b>다.
+  그래서 테스트 오차에는 Hoeffding과 표준오차 √(p(1−p)/n)을 그대로 쓸 수 있다.
+  테스트 1,000개로 정확도 92%를 얻었다면 "실제 정확도는 대략 92% ± 1.7%(표준오차 2개)"라고 말할 수 있다.
+  데이터를 나누는 구체적인 방법은 Topic 1 보충자료
+  <a href="../../T01_probability-axioms/notes/data_splitting.html">데이터를 나눈다는 것</a>에 있다.
+</p>
+
+<div class="note">
+  <b>⚠️ 테스트 데이터를 여러 번 보면 그것도 훈련 데이터가 된다.</b>
+  테스트 점수를 보고 모델을 고치고, 다시 테스트하고, 또 고치면 — 테스트 데이터로 <b>모델을 고르고 있는</b> 것이다.
+  3절의 선택 편향이 그대로 되살아난다. 공개 리더보드 경진대회에서 순위가 최종 비공개 평가에서 크게 뒤집히는
+  일이 흔한 이유가 이것이다.
+</div>
+
+<h2>6. 정리</h2>
+
+<table>
+  <tr><th style="width:190px">차이의 원인</th><th>우연 (표본이 유한하다)</th><th>선택 (데이터로 모델을 골랐다)</th></tr>
+  <tr><td><b>방향</b></td><td>양쪽 — 좋게도 나쁘게도</td><td><b>한쪽</b> — 늘 좋아 보이게</td></tr>
+  <tr><td><b>줄어드는 조건</b></td><td>n 이 커질 때 (1/√n)</td><td>n 이 커질 때, 그리고 후보가 적을 때</td></tr>
+  <tr><td><b>재는 도구</b></td><td>LLN · Chebyshev · <b>Hoeffding</b></td><td>Hoeffding + 합집합 한계 → <span class="tag">심화</span> generalization bound</td></tr>
+  <tr><td><b>막는 방법</b></td><td>데이터를 더 모은다</td><td><b>따로 떼어 둔 테스트 데이터</b>로 잰다</td></tr>
+</table>
+
+<div class="link">
+  <b>다른 Topic과의 연결.</b>
+  Topic 3 — 실제 오차가 곧 <b>Risk(손실의 기댓값)</b>다.
+  Topic 12 — MLE도 "가진 데이터에서 가장 잘 맞는 모수를 고르는" 일이라 같은 낙관이 생긴다.
+  Topic 14 — 가설 100개를 검정해 p-value가 가장 작은 것 하나만 보고하는 <b>다중검정 문제</b>가
+  3절의 선택 편향과 정확히 같은 구조다.
+</div>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — 실제 오차는 모평균처럼 알고 싶지만 모르는 값이고, 훈련 오차는 가진 데이터로 계산한
+  표본평균이다. 둘은 <b>우연</b> 때문에 조금 다르고(Hoeffding이 잰다), 훈련 데이터로 모델을
+  <b>골랐기</b> 때문에 훈련 오차가 더 좋아 보이도록 치우친다. 그래서 실제 오차는 <b>따로 떼어 둔 테스트 데이터</b>로 추정한다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 10 보충자료 &nbsp;·&nbsp;
+  일반화 이론(generalization bound)과 편향-분산 분해는 이 과목의 심화 주제이며 시험 범위가 아니다 &nbsp;·&nbsp;
+  오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const MS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+  const P2 = 0.30;
+
+  // 이항분포 Binomial(n, p) 의 누적분포 표 — 로그 공간에서 계산해 언더플로를 피한다
+  function binomCdf(n, p){
+    const lp = new Float64Array(n + 1);
+    lp[0] = n * Math.log(1 - p);
+    const r = Math.log(p / (1 - p));
+    for (let k = 0; k < n; k++) lp[k + 1] = lp[k] + Math.log((n - k) / (k + 1)) + r;
+    const cdf = new Float64Array(n + 1);
+    let s = 0;
+    for (let k = 0; k <= n; k++){ s += Math.exp(lp[k]); cdf[k] = s; }
+    for (let k = 0; k <= n; k++) cdf[k] /= s;
+    return cdf;
+  }
+  // 누적분포 표에서 역변환 샘플링 (Topic 6) — 이분 탐색
+  function drawBinom(cdf){
+    const u = Math.random();
+    let lo = 0, hi = cdf.length - 1;
+    while (lo < hi){ const m = (lo + hi) >> 1; if (cdf[m] < u) lo = m + 1; else hi = m; }
+    return lo;
+  }
+  // E[M 개 중 최소 훈련 오차] — P(min ≥ k) = P(X ≥ k)^M 을 k 에 대해 더한다
+  function expMin(cdf, n, M){
+    let s = 0;
+    for (let k = 1; k <= n; k++) s += Math.pow(1 - cdf[k - 1], M);
+    return s / n;
+  }
+
+  function axes(ctx, W, H, L, R, T, B, xmin, xmax, ymin, ymax, xt, yt, xfmt, yfmt){
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = css("--line"); ctx.fillStyle = css("--muted");
+    ctx.font = "11px Consolas, monospace"; ctx.lineWidth = 1;
+    const px = x => L + (x - xmin) / (xmax - xmin) * (W - L - R);
+    const py = y => T + (H - T - B) - (y - ymin) / (ymax - ymin) * (H - T - B);
+    ctx.textAlign = "center";
+    xt.forEach(x => { ctx.beginPath(); ctx.moveTo(px(x), T); ctx.lineTo(px(x), H - B); ctx.stroke(); ctx.fillText(xfmt(x), px(x), H - B + 16); });
+    ctx.textAlign = "right";
+    yt.forEach(y => { ctx.beginPath(); ctx.moveTo(L, py(y)); ctx.lineTo(W - R, py(y)); ctx.stroke(); ctx.fillText(yfmt(y), L - 8, py(y) + 4); });
+    return {px, py};
+  }
+
+  // ================= 시뮬레이션 ① =================
+  const aCv = $("a-cv"), aCtx = aCv.getContext("2d");
+  let aErr = [];
+  function aSample(){
+    const p = +$("a-p").value, n = +$("a-n").value;
+    const cdf = binomCdf(n, p);
+    aErr = [];
+    for (let i = 0; i < 1000; i++) aErr.push(drawBinom(cdf) / n);
+  }
+  function aDraw(){
+    const p = +$("a-p").value, n = +$("a-n").value;
+    $("a-vp").textContent = p.toFixed(2); $("a-vn").textContent = n;
+    const eps = Math.sqrt(Math.log(2 / 0.05) / (2 * n));
+    const W = aCv.width, H = aCv.height;
+    const xmin = 0, xmax = Math.min(1, p + 0.35);
+    const NB = 70, bw = (xmax - xmin) / NB, cnt = new Array(NB).fill(0);
+    aErr.forEach(e => { const b = Math.min(NB - 1, Math.max(0, Math.floor((e - xmin) / bw))); cnt[b]++; });
+    const ymax = Math.max(...cnt) * 1.15 || 1;
+    const xt = []; for (let x = 0; x <= xmax + 1e-9; x += 0.1) xt.push(+x.toFixed(1));
+    const {px, py} = axes(aCtx, W, H, 44, 18, 12, 42, xmin, xmax, 0, ymax, xt, [], x => x.toFixed(1), y => "");
+    // Hoeffding 띠
+    aCtx.fillStyle = "rgba(13,148,136,0.16)";
+    aCtx.fillRect(px(Math.max(xmin, p - eps)), 12, px(Math.min(xmax, p + eps)) - px(Math.max(xmin, p - eps)), H - 54);
+    // 히스토그램
+    aCtx.fillStyle = "rgba(59,79,216,0.55)";
+    cnt.forEach((c, i) => { if (c) aCtx.fillRect(px(xmin + i * bw) + 0.5, py(c), px(xmin + (i + 1) * bw) - px(xmin + i * bw) - 1, py(0) - py(c)); });
+    // 실제 오차
+    aCtx.strokeStyle = css("--orange"); aCtx.lineWidth = 3;
+    aCtx.beginPath(); aCtx.moveTo(px(p), 12); aCtx.lineTo(px(p), H - 42); aCtx.stroke();
+    aCtx.fillStyle = css("--ink"); aCtx.textAlign = "center"; aCtx.font = "12px Malgun Gothic, sans-serif";
+    aCtx.fillText("훈련 오차", W / 2, H - 2);
+
+    const m = aErr.reduce((s, v) => s + v, 0) / aErr.length;
+    const sd = Math.sqrt(aErr.reduce((s, v) => s + (v - m) * (v - m), 0) / aErr.length);
+    const out = aErr.filter(e => Math.abs(e - p) >= eps).length / aErr.length;
+    $("a-t1").textContent = p.toFixed(3);
+    $("a-t2").textContent = m.toFixed(3);
+    $("a-t3").textContent = sd.toFixed(4);
+    $("a-t3f").textContent = "이론 √(p(1−p)/n) = " + Math.sqrt(p * (1 - p) / n).toFixed(4);
+    $("a-t4").textContent = (out * 100).toFixed(1) + "%";
+    $("a-t4f").textContent = "ε = ±" + eps.toFixed(3) + " · 보장 ≤ 5%";
+  }
+  ["a-p", "a-n"].forEach(id => $(id).addEventListener("input", () => { aSample(); aDraw(); }));
+  $("a-go").addEventListener("click", () => { aSample(); aDraw(); });
+  aSample(); aDraw();
+
+  // ================= 시뮬레이션 ② =================
+  const bCv = $("b-cv"), bCtx = bCv.getContext("2d");
+  const cCv = $("b-cv2"), cCtx = cCv.getContext("2d");
+  let bTrain = [], bBest = 0, bTest = 0;
+  function bSample(){
+    const M = MS[+$("b-m").value], n = +$("b-n").value;
+    const cdf = binomCdf(n, P2);
+    bTrain = [];
+    for (let i = 0; i < M; i++) bTrain.push(drawBinom(cdf) / n);
+    bBest = Math.min(...bTrain);
+    bTest = drawBinom(cdf) / n;           // 골라낸 모델도 새 데이터에서는 실제 오차 0.30 짜리일 뿐이다
+  }
+  function bDraw(){
+    const M = MS[+$("b-m").value], n = +$("b-n").value;
+    $("b-vm").textContent = M.toLocaleString(); $("b-vn").textContent = n;
+    const W = bCv.width, H = bCv.height;
+    const lo = Math.max(0, P2 - 0.25), hi = P2 + 0.25;
+    const xt = []; for (let x = Math.ceil(lo * 20) / 20; x <= hi + 1e-9; x += 0.05) xt.push(+x.toFixed(2));
+    const {px} = axes(bCtx, W, H, 20, 18, 12, 42, lo, hi, 0, 1, xt, [], x => x.toFixed(2), y => "");
+    // 점을 세로로 흩어 찍는다 (값이 겹치는 것을 보이게)
+    const counts = {};
+    bTrain.forEach(e => {
+      const key = e.toFixed(4); counts[key] = (counts[key] || 0) + 1;
+      const k = counts[key];
+      const x = px(Math.min(hi, Math.max(lo, e)));
+      const y = (H - 46) - ((k - 1) % 40) * 4.2 - 2;
+      bCtx.fillStyle = "rgba(151,163,182,0.75)";
+      bCtx.beginPath(); bCtx.arc(x, y, 2.6, 0, 2 * Math.PI); bCtx.fill();
+    });
+    bCtx.strokeStyle = css("--orange"); bCtx.lineWidth = 3;
+    bCtx.beginPath(); bCtx.moveTo(px(P2), 12); bCtx.lineTo(px(P2), H - 42); bCtx.stroke();
+    const xb = px(Math.max(lo, bBest));
+    bCtx.fillStyle = css("--pink");
+    bCtx.beginPath(); bCtx.arc(xb, H - 48, 6.5, 0, 2 * Math.PI); bCtx.fill();
+    bCtx.font = "bold 12px Malgun Gothic, sans-serif"; bCtx.textAlign = "center";
+    bCtx.fillText("골라낸 모델", xb, 26);
+    bCtx.strokeStyle = css("--pink"); bCtx.lineWidth = 1.2; bCtx.setLineDash([4, 3]);
+    bCtx.beginPath(); bCtx.moveTo(xb, 32); bCtx.lineTo(xb, H - 56); bCtx.stroke(); bCtx.setLineDash([]);
+    bCtx.fillStyle = css("--ink"); bCtx.font = "12px Malgun Gothic, sans-serif";
+    bCtx.fillText("훈련 오차", W / 2, H - 2);
+
+    const cdf = binomCdf(n, P2);
+    $("b-t1").textContent = bBest.toFixed(3);
+    $("b-t3").textContent = bTest.toFixed(3);
+    $("b-t4").textContent = (P2 - expMin(cdf, n, M)).toFixed(3);
+    cDraw(cdf, n, M);
+  }
+  function cDraw(cdf, n, Mnow){
+    const W = cCv.width, H = cCv.height;
+    const lx = m => Math.log10(m);
+    const gaps = MS.map(M => P2 - expMin(cdf, n, M));
+    const bnds = MS.map(M => Math.sqrt(Math.log(2 * M / 0.05) / (2 * n)));
+    const ymax = Math.max(...bnds) * 1.1;
+    const step = ymax > 0.2 ? 0.05 : ymax > 0.08 ? 0.02 : 0.01;
+    const yt = []; for (let y = 0; y <= ymax + 1e-9; y += step) yt.push(+y.toFixed(2));
+    const {px, py} = axes(cCtx, W, H, 50, 30, 12, 42, 0, 3, 0, ymax, [0, 1, 2, 3], yt,
+                          x => Math.pow(10, x).toLocaleString(), y => y.toFixed(2));
+    cCtx.fillStyle = css("--ink"); cCtx.font = "12px Malgun Gothic, sans-serif"; cCtx.textAlign = "center";
+    cCtx.fillText("후보 모델 수 M (로그 눈금)", (50 + W - 30) / 2, H - 2);
+    function line(vals, col, dash, w){
+      cCtx.strokeStyle = col; cCtx.lineWidth = w; cCtx.setLineDash(dash);
+      cCtx.beginPath(); MS.forEach((M, i) => { const x = px(lx(M)), y = py(vals[i]); if (i) cCtx.lineTo(x, y); else cCtx.moveTo(x, y); });
+      cCtx.stroke(); cCtx.setLineDash([]);
+    }
+    line(bnds, css("--muted"), [6, 4], 2);
+    line(gaps, css("--accent"), [], 3);
+    const i = MS.indexOf(Mnow);
+    cCtx.fillStyle = css("--pink");
+    cCtx.beginPath(); cCtx.arc(px(lx(Mnow)), py(gaps[i]), 6, 0, 2 * Math.PI); cCtx.fill();
+    cCtx.fillStyle = css("--ink"); cCtx.font = "12px Malgun Gothic, sans-serif"; cCtx.textAlign = "left";
+    cCtx.fillText("낙관 편향 = 0.30 − (골라낸 모델의 평균 훈련 오차)", 56, 24);
+  }
+  ["b-m", "b-n"].forEach(id => $(id).addEventListener("input", () => { bSample(); bDraw(); }));
+  $("b-go").addEventListener("click", () => { bSample(); bDraw(); });
+  bSample(); bDraw();
+})();
+</script>
+</body>
+</html>
