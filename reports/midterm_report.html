@@ -1,0 +1,344 @@
+<title>확률통계 중간고사 리포트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@600;700&display=swap">
+<style>
+/* 레이아웃: 한 줄 읽기 폭(880px)의 단일 칼럼 — 요약 → 공통 약점 → 문항표 → 문항별 카드 순으로 내려간다 */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #18202b; --muted: #5a6575; --line: #dbe1e9;
+  --accent: #1f6a86; --accent-soft: #e2eef3;
+  --good: #2a7f53; --mid: #b97f12; --low: #b9433a; --track: #e7ebf1;
+  --f-display: "Noto Serif KR", "Nanum Myeongjo", Georgia, serif;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f141b; --surface: #161d26; --ink: #e5eaf0; --muted: #98a3b2; --line: #28323e;
+  --accent: #63b3cf; --accent-soft: #1b2e38;
+  --good: #5cbf8a; --mid: #e0a84a; --low: #e57668; --track: #232c37; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f141b; --surface: #161d26; --ink: #e5eaf0; --muted: #98a3b2; --line: #28323e;
+  --accent: #63b3cf; --accent-soft: #1b2e38;
+  --good: #5cbf8a; --mid: #e0a84a; --low: #e57668; --track: #232c37; color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font: 15px/1.7 var(--f-body); }
+.wrap { max-width: 880px; margin: 0 auto; padding-inline: 18px; padding-block: 40px 64px; display: grid; gap: 44px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.3; }
+h1 { font-size: clamp(26px, 5vw, 34px); }
+h2 { font-size: 22px; }
+h3 { font-size: 18px; }
+p { margin: 0; }
+.num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+.eyebrow { font: 500 12px/1 var(--f-data); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+section { display: grid; gap: 18px; }
+.lead { max-width: 64ch; color: var(--muted); }
+
+header { display: grid; gap: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 14px; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.stat { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; }
+.stat b { font: 500 24px/1.2 var(--f-data); font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: var(--muted); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+.chart { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font: 11px var(--f-data); }
+.chart .lbl { fill: var(--ink); }
+
+.secbars { display: grid; gap: 10px; }
+.secrow { display: grid; grid-template-columns: 9.5em 1fr 7.5em; gap: 12px; align-items: center; }
+.secrow .name { font-weight: 500; }
+.secrow .name small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+.bar { height: 10px; background: var(--track); border-radius: 5px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 5px; }
+.secrow .v { text-align: right; font-size: 13px; }
+
+.themes { display: grid; gap: 14px; counter-reset: t; }
+.theme { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.theme::before { counter-increment: t; content: counter(t); grid-row: span 3; font: 600 22px/1.2 var(--f-display); color: var(--accent); }
+.theme h3 { font-size: 16px; }
+.theme .where { font: 12px var(--f-data); color: var(--muted); }
+
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; }
+th, td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+th { font-weight: 500; color: var(--muted); font-size: 12px; background: var(--surface); }
+td:first-child, th:first-child, td:nth-child(2), th:nth-child(2) { text-align: left; }
+td:nth-child(2) { white-space: normal; min-width: 11em; }
+tr:last-child td { border-bottom: 0; }
+tbody tr.sec td { background: var(--accent-soft); color: var(--accent); font: 500 12px var(--f-data); letter-spacing: .04em; padding-block: 6px; }
+td .bar { width: 90px; display: inline-block; vertical-align: middle; margin-left: 8px; }
+td a { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--muted); }
+td a:hover, td a:focus-visible { color: var(--accent); border-color: var(--accent); }
+
+.qgroup { display: grid; gap: 16px; }
+.qgroup > h2 { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.qgroup > h2 small { font: 13px var(--f-body); color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; display: grid; gap: 14px; scroll-margin-top: 16px; min-width: 0; }
+.card header { display: flex; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; align-items: baseline; }
+.card header h3 span { font-family: var(--f-data); color: var(--accent); margin-right: 8px; font-size: 16px; }
+.qline { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+.qline b { color: var(--ink); font-weight: 500; }
+.point { border-left: 3px solid var(--accent); padding: 2px 0 2px 12px; }
+.point .eyebrow { display: block; margin-bottom: 4px; }
+.parts { display: grid; gap: 8px; }
+.part { display: grid; grid-template-columns: minmax(0, 11em) 1fr 3.6em; gap: 4px 12px; align-items: center; font-size: 13.5px; }
+.part .lab { min-width: 0; }
+.part .lab em { font-style: normal; font: 11px var(--f-data); color: var(--muted); margin-left: 4px; }
+.part .pc { text-align: right; font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+.part .extra { grid-column: 2 / 4; display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--muted); }
+.chip { font: 12px var(--f-data); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip.ok { border-color: var(--good); color: var(--good); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.notes { display: grid; gap: 8px; }
+.notes h4 { margin: 0; font-size: 14px; font-weight: 600; }
+.notes ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+.keep { background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; font-size: 14px; }
+.keep b { color: var(--accent); }
+footer { font-size: 13px; color: var(--muted); display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 18px; }
+
+@media (max-width: 560px) {
+  .secrow { grid-template-columns: 1fr 5.5em; }
+  .secrow .bar { grid-column: 1 / 3; grid-row: 2; }
+  .part { grid-template-columns: 1fr 3.6em; }
+  .part .bar { grid-column: 1 / 3; grid-row: 2; }
+  .part .extra { grid-column: 1 / 3; }
+}
+@media (prefers-reduced-motion: no-preference) { .bar i { transition: width .4s ease; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">2026-2 · 확률통계 CB1501012</span>
+    <h1>확률통계 중간고사 결과</h1>
+    <div class="meta"><span>Topic 1–7 범위</span><span>18문항 · 195점 만점</span><span id="metaN"></span></div>
+    <p class="lead">문항별 평균과 분포, 많이 틀린 지점, 각 문항이 확인하려던 핵심을 정리했다. 개인 점수는 Plato에서 확인한다. </p>
+  </header>
+
+  <section>
+    <h2>전체 요약</h2>
+    <div class="stats" id="stats"></div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">
+        <h3>총점 분포</h3><span class="muted" style="font-size:13px">10점 구간 · 세로선은 중앙값</span>
+      </div>
+      <svg class="chart" id="hist" viewBox="0 0 640 220" role="img" aria-label="총점 분포 히스토그램"></svg>
+      <p class="muted" style="font-size:13px" id="quant"></p>
+    </div>
+    <div class="panel">
+      <h3>영역별 득점률</h3>
+      <div class="secbars" id="secbars"></div>
+      <div class="legend"><span><i style="background:var(--good)"></i>70% 이상</span><span><i style="background:var(--mid)"></i>40–70%</span><span><i style="background:var(--low)"></i>40% 미만</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>많은 학생이 막힌 다섯 지점</h2>
+    <p class="lead">문항은 달라도 같은 혼동이 여러 곳에서 반복됐다. 기말고사 전에 아래 다섯 가지를 먼저 점검하자.</p>
+    <div class="themes" id="themes"></div>
+  </section>
+
+  <section>
+    <h2>문항별 결과</h2>
+    <p class="lead">문항 코드를 누르면 아래의 자세한 분석으로 이동한다. 일부 문항은 Moodle 자동채점 칸(객관식)과 서술 칸을 합한 점수다.</p>
+    <div class="tablewrap"><table id="qtable">
+      <thead><tr><th>문항</th><th>주제</th><th>배점</th><th>평균</th><th>중앙값</th><th>득점률</th><th>만점</th><th>0점</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <div id="groups" style="display:grid;gap:44px"></div>
+
+  <footer>
+    <p>객관식 칸은 Moodle 자동채점 결과이고, 칸별 정답률은 학생이 입력한 답을 같은 정답·허용오차로 다시 대조해 계산했다. 다시 대조한 합계는 Moodle 점수와 일치했다.</p>
+    <p>서술형은 답안 원문을 확인 중인 문항(2명)이 있어 그 학생들은 총점·해당 영역 통계에서 빠져 있다. 서술형 점수는 이의신청과 원문 확인을 거쳐 조정될 수 있다.</p>
+  </footer>
+</div>
+
+<script>
+const DATA = {"n_students": 58, "total": {"n": 56, "full": 195, "mean": 102.33, "median": 106.25, "sd": 34.44, "max": 157.0, "min": 10.5, "pct": 52.5, "n_full": 0, "n_zero": 0}, "pending_students": 2, "quantiles": {"10": 57.9, "25": 80.5, "50": 106.2, "75": 130.1, "90": 138.5}, "hist": {"bins": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190], "counts": [0, 2, 0, 3, 0, 1, 2, 6, 4, 7, 4, 5, 8, 10, 2, 2, 0, 0, 0, 0]}, "objective": {"n": 58, "full": 60, "mean": 40.24, "median": 42.0, "sd": 12.22, "max": 59.0, "min": 4.0, "pct": 67.1, "n_full": 0, "n_zero": 0}, "essay": {"n": 56, "full": 135, "mean": 61.83, "median": 60.5, "sd": 24.56, "max": 104.0, "min": 1.5, "pct": 45.8, "n_full": 0, "n_zero": 0}, "sections": {"A": {"name": "확률의 언어", "n": 56, "full": 35, "mean": 23.3, "median": 25.25, "sd": 7.02, "max": 33.0, "min": 2.0, "pct": 66.6, "n_full": 0, "n_zero": 0}, "B": {"name": "확률변수와 기댓값", "n": 58, "full": 40, "mean": 28.69, "median": 29.5, "sd": 7.59, "max": 39.5, "min": 5.0, "pct": 71.7, "n_full": 0, "n_zero": 0}, "C": {"name": "정보이론", "n": 58, "full": 25, "mean": 14.51, "median": 16.66, "sd": 6.64, "max": 25.0, "min": 0.0, "pct": 58.1, "n_full": 2, "n_zero": 1}, "D": {"name": "연속분포", "n": 58, "full": 50, "mean": 20.56, "median": 21.12, "sd": 12.92, "max": 43.0, "min": 0.0, "pct": 41.1, "n_full": 0, "n_zero": 2}, "E": {"name": "코드 읽기", "n": 58, "full": 45, "mean": 14.1, "median": 10.5, "sd": 11.6, "max": 35.0, "min": 0.0, "pct": 31.3, "n_full": 0, "n_zero": 9}}, "questions": [{"code": "A1", "title": "셈하기와 공리", "section": "A", "n": 58, "full": 10, "mean": 6.35, "median": 7.0, "sd": 2.61, "max": 10.0, "min": 0.0, "pct": 63.5, "n_full": 3, "n_zero": 4, "essay_points": 10, "cloze_points": 0, "parts": [{"label": "(a) Ω", "kind": "essay", "points": 2, "mean": 0.86, "pct": 43.1, "full_pct": 43.1, "zero_pct": 56.9}, {"label": "(b) 사건 A", "kind": "essay", "points": 0.75, "mean": 0.66, "pct": 87.9, "full_pct": 87.9, "zero_pct": 12.1}, {"label": "(b) P[A]", "kind": "essay", "points": 0.75, "mean": 0.67, "pct": 89.7, "full_pct": 89.7, "zero_pct": 10.3}, {"label": "(c) 사건 B", "kind": "essay", "points": 0.75, "mean": 0.56, "pct": 74.1, "full_pct": 74.1, "zero_pct": 25.9}, {"label": "(c) P[B]", "kind": "essay", "points": 0.75, "mean": 0.61, "pct": 81.0, "full_pct": 81.0, "zero_pct": 19.0}, {"label": "(d) 사건 C", "kind": "essay", "points": 0.75, "mean": 0.56, "pct": 74.1, "full_pct": 74.1, "zero_pct": 25.9}, {"label": "(d) P[C]", "kind": "essay", "points": 0.75, "mean": 0.58, "pct": 77.6, "full_pct": 77.6, "zero_pct": 22.4}, {"label": "(e) A∪B", "kind": "essay", "points": 0.75, "mean": 0.52, "pct": 69.0, "full_pct": 62.1, "zero_pct": 27.6}, {"label": "(e) P[A∪B]", "kind": "essay", "points": 0.75, "mean": 0.44, "pct": 58.6, "full_pct": 58.6, "zero_pct": 41.4}, {"label": "(f) A∩Cᶜ", "kind": "essay", "points": 1, "mean": 0.39, "pct": 38.6, "full_pct": 27.6, "zero_pct": 56.9}, {"label": "(f) P[A∩Cᶜ]", "kind": "essay", "points": 1, "mean": 0.53, "pct": 52.6, "full_pct": 51.7, "zero_pct": 46.6}], "pending": 0}, {"code": "A2", "title": "조건부 확률과 독립", "section": "A", "n": 56, "full": 12, "mean": 9.8, "median": 10.5, "sd": 2.58, "max": 12.0, "min": 2.0, "pct": 81.7, "n_full": 14, "n_zero": 0, "essay_points": 6, "cloze_points": 6, "parts": [{"label": "(a) P[A∪B]", "kind": "cloze", "points": 1.0, "answer": "0.7", "correct_pct": 96.6, "blank_pct": 0.0, "top_wrong": [["0.9", 2]]}, {"label": "(a) P[A|B]", "kind": "cloze", "points": 2.0, "answer": "0.6666 ± 0.0001", "correct_pct": 89.7, "blank_pct": 0.0, "top_wrong": []}, {"label": "(b) P[A|C]", "kind": "cloze", "points": 1.5, "answer": "0.6", "correct_pct": 89.7, "blank_pct": 0.0, "top_wrong": []}, {"label": "(b) P[C|A]", "kind": "cloze", "points": 1.5, "answer": "0.5", "correct_pct": 91.4, "blank_pct": 0.0, "top_wrong": []}, {"label": "(c) 판정", "kind": "essay", "points": 1, "mean": 0.93, "pct": 93.0, "full_pct": 91.4, "zero_pct": 6.9}, {"label": "(c) 근거", "kind": "essay", "points": 2, "mean": 1.29, "pct": 64.7, "full_pct": 48.3, "zero_pct": 17.2}, {"label": "(d) 판정", "kind": "essay", "points": 1, "mean": 0.77, "pct": 77.2, "full_pct": 75.9, "zero_pct": 22.4}, {"label": "(d) 근거", "kind": "essay", "points": 2, "mean": 1.34, "pct": 67.0, "full_pct": 39.7, "zero_pct": 12.1}], "pending": 2}, {"code": "A3", "title": "Bayes 정리 — 오류 탐지기", "section": "A", "n": 58, "full": 13, "mean": 7.0, "median": 8.25, "sd": 3.67, "max": 13.0, "min": 0.0, "pct": 53.8, "n_full": 2, "n_zero": 3, "essay_points": 13, "cloze_points": 0, "parts": [{"label": "(a) PPV 값", "kind": "essay", "points": 2, "mean": 1.38, "pct": 69.0, "full_pct": 69.0, "zero_pct": 31.0}, {"label": "(a) 과정", "kind": "essay", "points": 3, "mean": 2.36, "pct": 78.7, "full_pct": 69.0, "zero_pct": 6.9}, {"label": "(b) 정확도", "kind": "essay", "points": 2, "mean": 0.62, "pct": 31.0, "full_pct": 29.3, "zero_pct": 67.2}, {"label": "(c) PPV(50%)", "kind": "essay", "points": 1.5, "mean": 0.79, "pct": 52.9, "full_pct": 51.7, "zero_pct": 46.6}, {"label": "(c) 이유", "kind": "essay", "points": 1.5, "mean": 0.61, "pct": 40.8, "full_pct": 6.9, "zero_pct": 27.6}, {"label": "(d) 오류 지적", "kind": "essay", "points": 3, "mean": 1.23, "pct": 41.1, "full_pct": 6.9, "zero_pct": 31.0}], "pending": 0}, {"code": "B1", "title": "PMF와 기댓값", "section": "B", "n": 58, "full": 8, "mean": 5.5, "median": 7.0, "sd": 2.79, "max": 8.0, "min": 0.0, "pct": 68.8, "n_full": 29, "n_zero": 5, "essay_points": 0, "cloze_points": 8, "parts": [{"label": "(a) E[X]", "kind": "cloze", "points": 3.0, "answer": "1550", "correct_pct": 91.4, "blank_pct": 1.7, "top_wrong": []}, {"label": "(b) Var[X]", "kind": "cloze", "points": 3.0, "answer": "6.6475e+06", "correct_pct": 58.6, "blank_pct": 3.4, "top_wrong": [["9050000", 4], ["3647500", 2], ["2402500", 2]]}, {"label": "(b) SD[X]", "kind": "cloze", "points": 2.0, "answer": "2578.27 ± 0.001", "correct_pct": 50.0, "blank_pct": 3.4, "top_wrong": [["2578", 5], ["3008.3217", 3], ["1550", 3]]}], "pending": 0}, {"code": "B2", "title": "선형성", "section": "B", "n": 58, "full": 8, "mean": 6.86, "median": 8.0, "sd": 1.8, "max": 8.0, "min": 0.0, "pct": 85.8, "n_full": 39, "n_zero": 1, "essay_points": 0, "cloze_points": 8, "parts": [{"label": "(a) E[4X−3]", "kind": "cloze", "points": 2.0, "answer": "29", "correct_pct": 94.8, "blank_pct": 0.0, "top_wrong": []}, {"label": "(b) Var[4X−3]", "kind": "cloze", "points": 3.0, "answer": "80", "correct_pct": 89.7, "blank_pct": 0.0, "top_wrong": []}, {"label": "(c) E[X²]", "kind": "cloze", "points": 3.0, "answer": "69", "correct_pct": 75.9, "blank_pct": 0.0, "top_wrong": [["64", 6], ["921", 3], ["144", 2]]}], "pending": 0}, {"code": "B3", "title": "분포 고르기", "section": "B", "n": 58, "full": 10, "mean": 8.36, "median": 9.5, "sd": 2.57, "max": 10.0, "min": 0.0, "pct": 83.6, "n_full": 18, "n_zero": 3, "essay_points": 10, "cloze_points": 0, "parts": [{"label": "(a) 룰렛", "kind": "essay", "points": 2, "mean": 1.7, "pct": 84.9, "full_pct": 75.9, "zero_pct": 10.3}, {"label": "(b) 첫 클릭", "kind": "essay", "points": 3, "mean": 2.55, "pct": 84.9, "full_pct": 74.1, "zero_pct": 10.3}, {"label": "(c) 콜센터", "kind": "essay", "points": 3, "mean": 2.66, "pct": 88.8, "full_pct": 77.6, "zero_pct": 6.9}, {"label": "(d) 동전 1회", "kind": "essay", "points": 2, "mean": 1.45, "pct": 72.4, "full_pct": 36.2, "zero_pct": 12.1}], "pending": 0}, {"code": "B4", "title": "패킷 손실", "section": "B", "n": 58, "full": 14, "mean": 7.97, "median": 8.5, "sd": 3.87, "max": 14.0, "min": 0.0, "pct": 56.9, "n_full": 7, "n_zero": 3, "essay_points": 7, "cloze_points": 7, "parts": [{"label": "(a) 손실까지 기댓값", "kind": "cloze", "points": 3.0, "answer": "25", "correct_pct": 93.1, "blank_pct": 1.7, "top_wrong": []}, {"label": "(c) λ", "kind": "cloze", "points": 2.0, "answer": "6", "correct_pct": 34.5, "blank_pct": 13.8, "top_wrong": [["25", 10], ["1", 2], ["0.04", 2], ["2", 2]]}, {"label": "(d) Poisson 근사", "kind": "cloze", "points": 2.0, "answer": "0.0446 ± 0.0001", "correct_pct": 25.9, "blank_pct": 32.8, "top_wrong": []}, {"label": "(b) P[X=2] 풀이", "kind": "essay", "points": 4, "mean": 2.48, "pct": 62.1, "full_pct": 53.4, "zero_pct": 31.0}, {"label": "(e) 근사 조건", "kind": "essay", "points": 3, "mean": 1.48, "pct": 49.4, "full_pct": 34.5, "zero_pct": 34.5}], "pending": 0}, {"code": "C1", "title": "엔트로피", "section": "C", "n": 58, "full": 12, "mean": 5.86, "median": 5.5, "sd": 3.23, "max": 12.0, "min": 0.0, "pct": 48.8, "n_full": 2, "n_zero": 4, "essay_points": 2, "cloze_points": 10, "parts": [{"label": "(a) H(p_X)", "kind": "cloze", "points": 2.33, "answer": "1.75", "correct_pct": 75.9, "blank_pct": 5.2, "top_wrong": [["2", 2]]}, {"label": "(a) H(p_Y)", "kind": "cloze", "points": 2.67, "answer": "1.8465 ± 0.0001", "correct_pct": 51.7, "blank_pct": 5.2, "top_wrong": [["2", 3], ["1.8461", 2], ["1.846", 2]]}, {"label": "(b) B 부호", "kind": "cloze", "points": 0.67, "answer": "10", "correct_pct": 36.2, "blank_pct": 10.3, "top_wrong": [["01", 12], ["1", 12], ["00", 2], ["2", 2]]}, {"label": "(b) C 부호", "kind": "cloze", "points": 0.67, "answer": "110", "correct_pct": 27.6, "blank_pct": 10.3, "top_wrong": [["100", 7], ["10", 7], ["2", 4], ["11", 3]]}, {"label": "(b) D 부호", "kind": "cloze", "points": 0.67, "answer": "111", "correct_pct": 29.3, "blank_pct": 10.3, "top_wrong": [["11", 7], ["101", 6], ["011", 5], ["110", 4]]}, {"label": "(c) D_X 평균 bits", "kind": "cloze", "points": 1.33, "answer": "1.75", "correct_pct": 48.3, "blank_pct": 24.1, "top_wrong": [["1", 4], ["0.875", 2], ["0.25", 2]]}, {"label": "(c) D_Y 평균 bits", "kind": "cloze", "points": 1.67, "answer": "1.9", "correct_pct": 24.1, "blank_pct": 29.3, "top_wrong": [["1.8464", 9], ["1", 5], ["1.7", 2], ["2", 2]]}, {"label": "(d) 더 좋은 코드?", "kind": "essay", "points": 2, "mean": 0.96, "pct": 47.8, "full_pct": 19.0, "zero_pct": 31.0}], "pending": 0}, {"code": "C2", "title": "Cross-Entropy와 KL Divergence", "section": "C", "n": 58, "full": 13, "mean": 8.66, "median": 9.75, "sd": 4.28, "max": 13.0, "min": 0.0, "pct": 66.6, "n_full": 14, "n_zero": 3, "essay_points": 2, "cloze_points": 11, "parts": [{"label": "(a) H(p)", "kind": "cloze", "points": 2.0, "answer": "0.8813 ± 0.0001", "correct_pct": 81.0, "blank_pct": 3.4, "top_wrong": []}, {"label": "(a) H(p,q)", "kind": "cloze", "points": 3.0, "answer": "1.1464 ± 0.0001", "correct_pct": 74.1, "blank_pct": 5.2, "top_wrong": [["1.2480", 2]]}, {"label": "(a) D_KL(p‖q)", "kind": "cloze", "points": 3.0, "answer": "0.2651 ± 0.0001", "correct_pct": 70.7, "blank_pct": 5.2, "top_wrong": []}, {"label": "(b) D_KL(q‖p)", "kind": "cloze", "points": 3.0, "answer": "0.2771 ± 0.0001", "correct_pct": 43.1, "blank_pct": 5.2, "top_wrong": [["0.3668", 3], ["0.3667", 3], ["1.2480", 3], ["0.2270", 2]]}, {"label": "(c) H(p)의 역할", "kind": "essay", "points": 2, "mean": 1.4, "pct": 69.8, "full_pct": 46.6, "zero_pct": 10.3}], "pending": 0}, {"code": "D1", "title": "PDF", "section": "D", "n": 58, "full": 6, "mean": 2.74, "median": 3.0, "sd": 1.68, "max": 5.5, "min": 0.0, "pct": 45.7, "n_full": 0, "n_zero": 7, "essay_points": 2, "cloze_points": 4, "parts": [{"label": "(a) c", "kind": "cloze", "points": 1.0, "answer": "0.2", "correct_pct": 72.4, "blank_pct": 1.7, "top_wrong": [["0.1666", 5], ["1", 4], ["5", 2]]}, {"label": "(c) P[2≤X≤4]", "kind": "cloze", "points": 1.0, "answer": "0.4", "correct_pct": 55.2, "blank_pct": 12.1, "top_wrong": [["0.3333", 7], ["1", 2], ["0.5", 2]]}, {"label": "(d) E[X]", "kind": "cloze", "points": 1.0, "answer": "3.5", "correct_pct": 62.1, "blank_pct": 10.3, "top_wrong": [["0.2", 4], ["2.5", 2], ["1", 2], ["3", 2]]}, {"label": "(e) Var[X]", "kind": "cloze", "points": 1.0, "answer": "2.0833 ± 0.0001", "correct_pct": 56.9, "blank_pct": 15.5, "top_wrong": [["2.083", 3], ["4.0833", 2]]}, {"label": "(b) CDF", "kind": "essay", "points": 2, "mean": 0.28, "pct": 13.8, "full_pct": 0.0, "zero_pct": 53.4}], "pending": 0}, {"code": "D2", "title": "Exponential과 Poisson", "section": "D", "n": 58, "full": 16, "mean": 7.76, "median": 7.5, "sd": 4.93, "max": 16.0, "min": 0.0, "pct": 48.5, "n_full": 1, "n_zero": 5, "essay_points": 10, "cloze_points": 6, "parts": [{"label": "(a) E[X]", "kind": "cloze", "points": 1.0, "answer": "6", "correct_pct": 81.0, "blank_pct": 5.2, "top_wrong": [["0.1666", 5]]}, {"label": "(a) Var[X]", "kind": "cloze", "points": 1.0, "answer": "6", "correct_pct": 82.8, "blank_pct": 5.2, "top_wrong": [["0.2777", 2], ["0.0277", 2]]}, {"label": "(b) E[Y]", "kind": "cloze", "points": 1.0, "answer": "0.1666 ± 0.0001", "correct_pct": 74.1, "blank_pct": 13.8, "top_wrong": [["1/6", 3]]}, {"label": "(b) Var[Y]", "kind": "cloze", "points": 1.0, "answer": "0.0277 ± 0.0001", "correct_pct": 58.6, "blank_pct": 15.5, "top_wrong": [["0.2777", 4], ["1/36", 2], ["0.1666", 2]]}, {"label": "(c) P[X=0]", "kind": "cloze", "points": 1.0, "answer": "0.0025 ± 0.0001", "correct_pct": 63.8, "blank_pct": 15.5, "top_wrong": [["0", 2]]}, {"label": "(d) P[X≥2]", "kind": "cloze", "points": 1.0, "answer": "0.9826 ± 0.0001", "correct_pct": 17.2, "blank_pct": 20.7, "top_wrong": [["0.9553", 3], ["0.9999", 3], ["0.9380", 3], ["0.9851", 2]]}, {"label": "(e) 10분 0통", "kind": "essay", "points": 3, "mean": 1.19, "pct": 39.7, "full_pct": 34.5, "zero_pct": 50.0}, {"label": "(f) 관찰 후 10분", "kind": "essay", "points": 2, "mean": 0.49, "pct": 24.6, "full_pct": 15.5, "zero_pct": 63.8}, {"label": "(g) 10분 지난 뒤", "kind": "essay", "points": 3, "mean": 1.22, "pct": 40.8, "full_pct": 22.4, "zero_pct": 48.3}, {"label": "(h) memoryless", "kind": "essay", "points": 2, "mean": 1.08, "pct": 53.9, "full_pct": 32.8, "zero_pct": 32.8}], "pending": 0}, {"code": "D3", "title": "Gaussian", "section": "D", "n": 58, "full": 12, "mean": 5.21, "median": 4.5, "sd": 4.33, "max": 12.0, "min": 0.0, "pct": 43.4, "n_full": 4, "n_zero": 14, "essay_points": 12, "cloze_points": 0, "parts": [{"label": "(a) pdf·cdf·ppf 뜻", "kind": "essay", "points": 3, "mean": 1.28, "pct": 42.8, "full_pct": 19.0, "zero_pct": 34.5}, {"label": "(b) ppf(0.1)", "kind": "essay", "points": 2, "mean": 1.07, "pct": 53.4, "full_pct": 53.4, "zero_pct": 46.6}, {"label": "(c) P[X>100]", "kind": "essay", "points": 2, "mean": 0.96, "pct": 47.8, "full_pct": 39.7, "zero_pct": 37.9}, {"label": "(d) P[55≤X≤95]", "kind": "essay", "points": 3, "mean": 1.26, "pct": 42.0, "full_pct": 36.2, "zero_pct": 44.8}, {"label": "(e) 상위 5%", "kind": "essay", "points": 2, "mean": 0.64, "pct": 31.9, "full_pct": 15.5, "zero_pct": 50.0}], "pending": 0}, {"code": "D4", "title": "독립인 Gaussian의 합", "section": "D", "n": 58, "full": 8, "mean": 2.41, "median": 1.5, "sd": 2.57, "max": 8.0, "min": 0.0, "pct": 30.1, "n_full": 3, "n_zero": 19, "essay_points": 8, "cloze_points": 0, "parts": [{"label": "(a) P[X≥68]", "kind": "essay", "points": 3, "mean": 1.06, "pct": 35.3, "full_pct": 22.4, "zero_pct": 39.7}, {"label": "(b) P[68≤X≤104]", "kind": "essay", "points": 2, "mean": 0.68, "pct": 34.1, "full_pct": 17.2, "zero_pct": 44.8}, {"label": "(c) 상위 5%", "kind": "essay", "points": 3, "mean": 0.66, "pct": 22.1, "full_pct": 8.6, "zero_pct": 51.7}], "pending": 0}, {"code": "D5", "title": "역변환 샘플링", "section": "D", "n": 58, "full": 8, "mean": 2.45, "median": 0.0, "sd": 3.14, "max": 8.0, "min": 0.0, "pct": 30.6, "n_full": 9, "n_zero": 30, "essay_points": 8, "cloze_points": 0, "parts": [{"label": "CDF", "kind": "essay", "points": 2, "mean": 0.68, "pct": 34.1, "full_pct": 25.9, "zero_pct": 56.9}, {"label": "유도", "kind": "essay", "points": 3, "mean": 0.82, "pct": 27.3, "full_pct": 17.2, "zero_pct": 60.3}, {"label": "변환식", "kind": "essay", "points": 3, "mean": 0.95, "pct": 31.6, "full_pct": 25.9, "zero_pct": 60.3}], "pending": 0}, {"code": "E1", "title": "Boolean Mask · List Comprehension", "section": "E", "n": 58, "full": 10, "mean": 3.42, "median": 2.5, "sd": 3.36, "max": 9.5, "min": 0.0, "pct": 34.2, "n_full": 0, "n_zero": 20, "essay_points": 10, "cloze_points": 0, "parts": [{"label": "(a) mask 의 뜻", "kind": "essay", "points": 3, "mean": 1.22, "pct": 40.5, "full_pct": 8.6, "zero_pct": 39.7}, {"label": "(b) 같은 값인 이유", "kind": "essay", "points": 3, "mean": 0.9, "pct": 29.9, "full_pct": 22.4, "zero_pct": 56.9}, {"label": "(c) 빈칸 ①②", "kind": "essay", "points": 4, "mean": 1.31, "pct": 32.8, "full_pct": 10.3, "zero_pct": 44.8}], "pending": 0}, {"code": "E2", "title": "Bayes 재검사", "section": "E", "n": 58, "full": 13, "mean": 3.97, "median": 3.0, "sd": 4.38, "max": 13.0, "min": 0.0, "pct": 30.6, "n_full": 2, "n_zero": 23, "essay_points": 13, "cloze_points": 0, "parts": [{"label": "(a) first 를 넘기는 이유", "kind": "essay", "points": 4, "mean": 1.57, "pct": 39.2, "full_pct": 3.4, "zero_pct": 41.4}, {"label": "(b) Bayes 식", "kind": "essay", "points": 6, "mean": 1.81, "pct": 30.2, "full_pct": 19.0, "zero_pct": 53.4}, {"label": "(c) first·second", "kind": "essay", "points": 3, "mean": 0.59, "pct": 19.8, "full_pct": 17.2, "zero_pct": 77.6}], "pending": 0}, {"code": "E3", "title": "Coupon Collector", "section": "E", "n": 58, "full": 10, "mean": 3.41, "median": 2.0, "sd": 3.7, "max": 10.0, "min": 0.0, "pct": 34.1, "n_full": 6, "n_zero": 26, "essay_points": 10, "cloze_points": 0, "parts": [{"label": "(a) 빈칸 ①", "kind": "essay", "points": 5, "mean": 1.22, "pct": 24.5, "full_pct": 10.3, "zero_pct": 53.4}, {"label": "(b) theory(4)", "kind": "essay", "points": 5, "mean": 2.18, "pct": 43.6, "full_pct": 41.4, "zero_pct": 55.2}], "pending": 0}, {"code": "E4", "title": "Quantile 비교 · 정규성 평가", "section": "E", "n": 58, "full": 12, "mean": 3.3, "median": 0.0, "sd": 3.91, "max": 11.5, "min": 0.0, "pct": 27.5, "n_full": 0, "n_zero": 30, "essay_points": 12, "cloze_points": 0, "parts": [{"label": "(a) 평균·표준편차", "kind": "essay", "points": 2, "mean": 0.87, "pct": 43.5, "full_pct": 34.5, "zero_pct": 51.7}, {"label": "(b) 최소·최대", "kind": "essay", "points": 2, "mean": 0.81, "pct": 40.5, "full_pct": 32.8, "zero_pct": 55.2}, {"label": "(c) 이론값", "kind": "essay", "points": 2, "mean": 0.64, "pct": 31.9, "full_pct": 31.0, "zero_pct": 67.2}, {"label": "(d) T/R 비율 해석", "kind": "essay", "points": 3, "mean": 0.34, "pct": 11.5, "full_pct": 0.0, "zero_pct": 77.6}, {"label": "(e) 정규성 평가", "kind": "essay", "points": 3, "mean": 0.64, "pct": 21.3, "full_pct": 19.0, "zero_pct": 72.4}], "pending": 0}], "cloze_check": [{"cloze": "A2-1", "mismatch": 0}, {"cloze": "B1", "mismatch": 0}, {"cloze": "B2", "mismatch": 0}, {"cloze": "B4-1", "mismatch": 0}, {"cloze": "C1-1", "mismatch": 1}, {"cloze": "C2-1", "mismatch": 0}, {"cloze": "D1-1", "mismatch": 0}, {"cloze": "D2-1", "mismatch": 0}], "corr_obj_essay": 0.71};
+
+const THEMES = [
+  { t: "분모가 무엇인지부터 확인한다",
+    d: "정확도와 PPV, P[A|X]와 P[X|A]는 분자가 같고 분모가 다르다. Bayes 식의 분모에는 오탐률 1−특이도가 들어가는데, 특이도를 그대로 넣은 답이 A3와 E2에서 반복됐다.",
+    w: "A2 · A3 · E2" },
+  { t: "엔트로피는 하한이고, 부호 길이는 실제 값이다",
+    d: "D_Y의 Huffman 평균 길이(1.9)를 쓸 자리에 엔트로피(1.8465)를 쓴 답이 많았다. D_KL(q‖p)를 구할 때 H(q)가 아니라 H(p)를 빼는 실수도 같은 뿌리다.",
+    w: "C1 · C2" },
+  { t: "PDF 값은 확률이 아니다",
+    d: "rv.pdf(0.7)를 'x=0.7일 확률'로 설명한 답이 많았다. 연속분포에서 한 점의 확률은 0이고, 확률은 CDF(면적)로 구한다. CDF는 구간 시작점(Uniform(1,6)이면 1)부터 쌓아야 한다.",
+    w: "D1 · D3" },
+  { t: "표준화하고, 다시 원래 단위로 되돌린다",
+    d: "rv는 표준정규분포다. 확률을 구할 때는 z=(x−μ)/σ로 바꿔 넣고, 경계값을 구할 때는 rv.ppf(0.95)로 얻은 z를 μ+σz로 되돌려야 한다. 독립인 부품 4개의 합은 N(80, 6²)이다. 표준편차는 4배가 아니라 √4배다.",
+    w: "D3 · D4" },
+  { t: "경계와 여사건을 한 번 더 센다",
+    d: "P[X≥2]=1−P[0]−P[1]인데 P[2]만 빼거나 P[0]을 빠뜨린 답이 많았다. '10분 동안 0통'과 '10분 안에 오지 않음'은 같은 사건이며, 1−e⁻¹(CDF)는 그 반대 사건이다.",
+    w: "D2 · D3 · D4" },
+];
+
+const C = {
+A1: { point: "표본공간을 구별되는 두 주사위의 순서쌍 36개로 세우고, 사건을 집합과 연산 기호(∪, ∩, 여집합)로 정확히 쓸 수 있는가.",
+  miss: ["(a) Ω를 두 눈의 합(2~12)이나 순서 없는 21쌍으로 쓴 답이 많아 절반 넘게 0점이었다. ",
+         "(e)(f)에서 연산을 'or', 'and'처럼 말로 쓰거나, '큰 값이 4를 넘는다'(Cᶜ)를 C로 착각해 A∩C를 쓴 답이 많았다.",
+         "(A∪B)−(A∩B)처럼 대칭차를 합집합으로 쓴 답이 있었다. 합집합에는 두 사건에 모두 속하는 원소도 들어간다."],
+  keep: "주사위 두 개는 (i, j) 36개가 같은 확률이다. 사건이 정해지면 확률은 원소 개수 ÷ 36이다." },
+A2: { point: "덧셈정리와 조건부 확률을 계산하고, 독립의 정의 P[A∩B]=P[A]P[B] (또는 P[A|B]=P[A])로 주장을 판정할 수 있는가.",
+  miss: ["(a)(b) 계산은 90% 안팎이 맞혔다.",
+         "(c) '거짓' 판정은 대부분 맞혔지만, 정의만 적고 0.18≠0.2 또는 0.667≠0.6을 계산으로 보이지 않은 답이 많았다. 문제는 계산과 설명을 함께 요구했다.",
+         "(d) 'P[A]=P[X]이면 성립한다'를 보이고 '참'으로 판정한 답이 약 1/5이었다. '임의의 X'라는 주장은 반례 하나로 깨진다. (b)에서 구한 P[A|C]=0.6, P[C|A]=0.5가 바로 반례다."],
+  keep: "P[A|X]와 P[X|A]는 분자 P[A∩X]가 같고 분모가 다르다. 두 값은 P[A]=P[X]일 때만 같다." },
+A3: { point: "기저율(base rate)이 PPV에 주는 영향과, 정확도와 PPV가 서로 다른 조건부 확률이라는 점.",
+  miss: ["(b) 정확도 0.882를 맞힌 학생은 약 30%였다. 0.8096(민감도×특이도), 0.2875(PPV), 0.92(민감도)를 쓴 답이 많았다. 정확도 = P[결함]·민감도 + P[정상]·특이도다.",
+         "(c) 값 0.8846은 절반이 맞혔지만, '결함 비율이 오르면 양성 판정 중 오탐의 비중이 줄어든다'는 이유까지 쓴 답은 드물었다.",
+         "(d) 'base rate fallacy'라는 이름만 쓴 답이 많았다. 결함으로 판정된 모듈의 결함 확률은 정의상 PPV이고, 정확도는 전체 판정을 분모로 한다는 차이를 짚어야 했다."],
+  keep: "결함 비율이 5%이면 정확도가 88%여도 양성 판정의 72%는 오탐이다. 정확도는 '양성 판정이 얼마나 믿을 만한가'를 말해 주지 않는다." },
+B1: { point: "PMF에서 기댓값을 구하고 Var[X]=E[X²]−(E[X])²로 분산과 표준편차를 계산할 수 있는가.",
+  miss: ["E[X]=1550은 90% 넘게 맞혔다.",
+         "분산 자리에 E[X²]=9,050,000을 그대로 쓴 답이 가장 흔했다. 표준편차를 √9,050,000≈3008로 구한 답도 같은 실수다."],
+  keep: "분산은 '제곱의 평균'에서 '평균의 제곱'을 뺀 값이다." },
+B2: { point: "기댓값의 선형성 E[aX+b]=aE[X]+b와 분산의 성질 Var[aX+b]=a²Var[X].",
+  miss: ["(a)(b)는 90% 안팎이 맞혔다.",
+         "(c) E[X²]=Var[X]+(E[X])²=69에서 분산을 빼먹고 64를 쓴 답이 가장 흔했다."],
+  keep: "E[X²]는 (E[X])²보다 항상 Var[X]만큼 크다." },
+B3: { point: "상황 설명에서 '무엇을 세는가'를 읽고 Binomial·Geometric·Poisson·Bernoulli를 고를 수 있는가.",
+  miss: ["분포 이름은 대부분 맞혔다.",
+         "(d) Bernoulli의 이유로 '한 번 시행'과 '결과가 두 가지' 중 하나만 쓴 답이 많아 부분점수에 그쳤다."],
+  keep: "Binomial은 고정된 n번 중 성공 횟수, Geometric은 첫 성공까지의 시행 수, Poisson은 정해진 구간의 발생 횟수, Bernoulli는 한 번의 시행 결과(0/1)다." },
+B4: { point: "Geometric의 평균 1/p, Binomial PMF 계산, 그리고 λ=np로 놓는 Poisson 근사와 그 성립 조건.",
+  miss: ["(c) λ=np=6을 맞힌 학생은 약 1/3이었다. (a)의 답 25(손실까지의 평균 패킷 수)를 λ로 쓴 답이 가장 흔했다.",
+         "(b) '정확히 2개가 손실'을 음이항(2번째 손실까지)으로 계산한 답이 있었다. 횟수 n=150이 고정되어 있으니 Binomial이다.",
+         "(e) 'n이 크다'와 'p가 작다' 중 하나만 쓴 답이 많았다. '분산/평균≈1'은 데이터가 Poisson인지 점검하는 기준이고, Binomial에서는 'p가 작다'와 같은 뜻이다."],
+  keep: "Poisson 근사는 n이 크고 p가 작으며 λ=np가 적당한 크기일 때 성립한다." },
+C1: { point: "엔트로피를 bit 단위로 계산하고, Huffman 부호를 만들어 평균 길이를 구하며, 엔트로피가 무손실 압축의 하한임을 이해하는가.",
+  miss: ["(b) Huffman 부호는 30% 안팎만 맞혔다. 고정길이 부호(01, 10, 11)를 그대로 쓰거나 B=1처럼 다른 부호의 앞부분과 겹치는 부호를 쓴 답이 많았다. A=0이면 나머지는 모두 1로 시작해야 한다.",
+         "(c) D_Y의 평균 길이 1.9를 쓸 자리에 엔트로피 1.8465를 쓴 답이 많았다.",
+         "(d) '불가능'이 정답이다. Huffman의 평균 1.75가 이미 H(p_X)=1.75에 도달했기 때문이다. 두 값이 같다는 근거까지 쓴 답은 1/5 정도였다."],
+  keep: "확률이 2⁻ᵏ 꼴이면 부호 길이 k = −log₂p가 되어 Huffman 평균 길이가 엔트로피와 정확히 같아진다." },
+C2: { point: "H(p), H(p,q), D_KL(p‖q)의 계산과 KL의 비대칭성, 그리고 H(p,q)=H(p)+D_KL(p‖q) 분해.",
+  miss: ["(b) D_KL(q‖p)=0.2771을 맞힌 학생은 43%였다. H(q,p)−H(p)=0.3667로 엔트로피를 잘못 빼거나 교차엔트로피 1.2480을 그대로 쓴 답이 있었다. D_KL(q‖p)=H(q,p)−H(q)다.",
+         "(c) 분해식과 'H(p)는 모델과 무관한 상수'를 함께 쓴 답은 절반 정도였다."],
+  keep: "학습은 q만 바꾼다. H(p)는 고정이므로 교차엔트로피를 줄이는 것과 KL을 줄이는 것은 같은 일이다." },
+D1: { point: "Uniform(1,6)의 정규화 상수, 구간 확률, 평균·분산, 그리고 CDF를 구간별로 정의할 수 있는가.",
+  miss: ["구간 길이를 6으로 보고 c=1/6, P[2≤X≤4]=1/3로 쓴 답이 있었다. 구간 [1,6]의 길이는 5다.",
+         "(b) CDF는 만점자가 없었다. 0.2x처럼 0부터 적분한 답이 가장 많았다. 올바른 식은 (x−1)/5이고, x<1이면 0, x>6이면 1이라는 구간 정의도 필요하다."],
+  keep: "CDF는 왼쪽 끝에서 0, 오른쪽 끝에서 1이 되어야 한다. 식에 x=1과 x=6을 넣어 확인하자." },
+D2: { point: "Poisson과 Exponential의 평균·분산, 시간 단위에 맞춘 λ 변환, '대기시간 > t'와 '구간 내 0회'가 같은 사건이라는 점, 그리고 memoryless 성질.",
+  miss: ["(d) P[X≥2]는 17%만 맞혔다. P[2]만 빼거나(0.9554), P[0]을 빠뜨리거나(0.9851), P[X≥3]을 구한(0.9380) 답이 흔했다.",
+         "(e)(f) 10분이면 λ'=1이고 답은 e⁻¹≈0.3679다. 1−e⁻¹=0.6321(10분 안에 전화가 올 확률)을 쓴 답이 많았다.",
+         "(g) memoryless 논리는 많이 썼지만, (f)의 틀린 값을 그대로 가져와 값이 틀린 경우가 많았다. (h)의 식 P[Y>s+t | Y>s]=P[Y>t]를 정확히 쓴 답은 1/3 정도였다."],
+  keep: "'t 동안 한 번도 안 온다' = '첫 도착까지 t보다 오래 걸린다' = e^(−λt)." },
+D3: { point: "pdf·cdf·ppf가 각각 무엇을 돌려주는지 알고, 표준정규 rv로 N(80, 10²)의 확률과 분위수를 표현할 수 있는가.",
+  miss: ["(a) pdf를 '확률'로 설명한 답이 많았다. pdf는 밀도(곡선의 높이)이고, cdf가 P[X≤x], ppf는 cdf의 역함수다.",
+         "(b) ppf(0.1)=−1.2815에서 부호를 빠뜨린 답이 있었다. 하위 10%는 평균보다 왼쪽이다.",
+         "(c)(d) rv.cdf(100)처럼 표준화 없이 원래 값을 넣은 답이 많았다.",
+         "(e) rv.ppf(0.95)에서 멈추고 80+10·z로 되돌리지 않은 답이 가장 흔했다."],
+  keep: "확률은 z=(x−μ)/σ로 넣고, 경계값은 μ+σ·z로 꺼낸다." },
+D4: { point: "독립인 Gaussian의 합: 평균은 더하고 분산도 더한다. 4개의 합은 N(80, 36)이다.",
+  miss: ["부품 하나의 분포 N(20, 3²)로 표준화한 답(z=16, 28)이 많았다. 제품 무게는 합이므로 합의 분포를 먼저 만들어야 한다.",
+         "rv.cdf(−2)처럼 꼬리 방향을 반대로 쓴 답, 경계값에서 역표준화를 빠뜨린 답이 D3와 같은 양상으로 나왔다."],
+  keep: "분산이 4배이니 표준편차는 2배(3→6)다. 표준편차를 그냥 4배 하지 않는다." },
+D5: { point: "역변환 샘플링: CDF를 u로 놓고 x에 대해 풀어 X=F⁻¹(U)를 만든다.",
+  miss: ["절반 넘게 0점이었고, 0점의 대부분은 무응답이었다.",
+         "CDF를 1−e^(λx)로 부호를 틀리거나, 정리 중 1−u를 u−1로 바꾸는 실수가 있었다.",
+         "X=−ln U도 정답이다. U와 1−U는 같은 Uniform(0,1)이다."],
+  keep: "u = 1 − e⁻ˣ → e⁻ˣ = 1 − u → X = −ln(1 − U)." },
+E1: { point: "Boolean mask가 True=1, False=0으로 평균되어 비율이 된다는 점과, 같은 계산을 두 문법으로 쓸 수 있다는 점.",
+  miss: ["(a) mask를 '4보다 큰 값만 담은 배열'로 오해한 답이 많았다. mask는 dice와 길이가 같은 True/False 배열이다.",
+         "(b) 힌트가 말했듯 근사가 아니다. 같은 dice에서 같은 조건의 개수를 같은 전체 수로 나눈 계산이라 정확히 같다. 'Poisson 근사', '표본이 커서'로 설명한 답은 점수를 받지 못했다.",
+         "(c) ①을 '>4'처럼 dice 없이 쓰거나, ②에서 if를 빠뜨린 답이 많았다. 정답은 dice[mask]와 if d > 4다."],
+  keep: "mask.mean() = (True의 개수) ÷ (전체 개수) = 조건을 만족한 비율." },
+E2: { point: "1차 검사의 사후확률을 2차 검사의 사전확률로 넘기는 순차 Bayes 갱신과, 그 갱신 식.",
+  miss: ["(b) 분모의 오탐 항에 1−특이도 대신 특이도를 넣은 답이 가장 흔했다. A3와 같은 실수다.",
+         "prior·sens/spec처럼 전확률 분모를 통째로 빠뜨린 답도 많았다.",
+         "(c) first≈0.1624, second≈0.6481을 맞힌 학생은 17%였다. 재검 한 번으로 PPV가 16%에서 65%로 뛴다."],
+  keep: "posterior = sens·prior ÷ (sens·prior + (1−spec)·(1−prior))." },
+E3: { point: "선형성으로 쪼갠 E[T]=n·Σ1/k를 코드로 옮기고 값을 계산할 수 있는가.",
+  miss: ["(a) '1/k'나 '1/n'처럼 더할 항만 쓰고 반복(for k in range(1, n+1))을 빠뜨린 답이 대부분이었다. sum()에는 더할 값들의 묶음이 들어가야 한다.",
+         "(b) 4·(1+1/2+1/3+1/4)=25/3≈8.3333은 계산을 쓴 학생 대부분이 맞혔다."],
+  keep: "sum(1/k for k in range(1, n+1)) — range의 끝은 n+1이다." },
+E4: { point: "Quantile–이론값 비교로 정규성을 판단하는 QQ plot의 논리. 양 끝(최소·최대)에서 실제 값이 이론값과 얼마나 벗어나는지 본다.",
+  miss: ["절반 가까이 무응답이었다. (a)~(c)는 출력에서 값을 옮기기만 하면 되는 칸이었다.",
+         "(d) T/R 비율 20.545를 '20 차이'로 읽거나 숫자만 적은 답이 많았다. cdf(최소값)=0.025÷20.545≈0.0012이므로, 정규분포라면 그렇게 작은 값이 나올 확률이 Quantile이 말하는 0.025의 약 1/20이라는 뜻이다.",
+         "(e) Dataset 1은 양 끝에서 실제≈이론이라 정규에 가깝고, Dataset 2는 양 끝이 크게 벗어나 꼬리가 두껍다. 두 데이터셋을 구분하지 않은 답이 있었다."],
+  keep: "T/R 비율이 1에서 멀수록 그 끝의 꼬리가 정규분포 예측과 다르다." },
+};
+
+const fmt = (x, d = 1) => Number(x).toFixed(d).replace(/\.0+$/, "");
+const tone = p => p >= 70 ? "var(--good)" : p >= 40 ? "var(--mid)" : "var(--low)";
+const bar = (p, w) => `<span class="bar"${w ? ` style="width:${w}"` : ""}><i style="width:${Math.max(0, Math.min(100, p))}%;background:${tone(p)}"></i></span>`;
+const el = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const T = DATA.total;
+el("metaN").textContent = `응시 ${DATA.n_students}명`;
+el("stats").innerHTML = [
+  [`${fmt(T.mean)}`, `평균 (${fmt(100 * T.mean / 195)}%)`],
+  [`${fmt(T.median)}`, "중앙값"],
+  [`${fmt(T.sd)}`, "표준편차"],
+  [`${fmt(T.max)}`, "최고점"],
+  [`${fmt(DATA.objective.mean)} / 60`, "객관식 칸 평균"],
+  [`${fmt(DATA.essay.mean)} / 135`, "서술 칸 평균"],
+].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+const Q = DATA.quantiles;
+el("quant").innerHTML = `하위 25% 경계 <span class="num">${Q["25"]}</span> · 중앙값 <span class="num">${Q["50"]}</span> · 상위 25% 경계 <span class="num">${Q["75"]}</span> · 상위 10% 경계 <span class="num">${Q["90"]}</span>. 객관식 칸과 서술 칸 점수의 상관계수는 <span class="num">${DATA.corr_obj_essay}</span>이다.`;
+
+(function hist() {
+  const { bins, counts } = DATA.hist, W = 640, H = 220, L = 34, R = 10, Tp = 12, B = 30;
+  const maxC = Math.max(...counts), step = maxC > 8 ? 2 : 1, top = Math.ceil(maxC / step) * step;
+  const bw = (W - L - R) / counts.length, y = c => Tp + (H - Tp - B) * (1 - c / top);
+  let s = "";
+  for (let g = 0; g <= top; g += step) s += `<line x1="${L}" x2="${W - R}" y1="${y(g)}" y2="${y(g)}" stroke="var(--line)"/><text x="${L - 6}" y="${y(g) + 4}" text-anchor="end">${g}</text>`;
+  counts.forEach((c, i) => {
+    if (c) s += `<rect x="${L + i * bw + 2}" y="${y(c)}" width="${bw - 4}" height="${y(0) - y(c)}" rx="2" fill="var(--accent)" opacity=".85"><title>${bins[i]}–${bins[i] + 9}점: ${c}명</title></rect>`;
+  });
+  for (let v = 0; v <= 200; v += 20) s += `<text x="${L + (v / 10) * bw}" y="${H - 12}" text-anchor="middle">${v}</text>`;
+  const mx = L + (T.median / 10) * bw;
+  s += `<line x1="${mx}" x2="${mx}" y1="${Tp}" y2="${y(0)}" stroke="var(--ink)" stroke-dasharray="4 3"/><text class="lbl" x="${mx + 5}" y="${Tp + 10}">중앙값 ${fmt(T.median)}</text>`;
+  s += `<text x="${W - R}" y="${H - 1}" text-anchor="end">총점 (195점 만점)</text>`;
+  el("hist").innerHTML = s;
+})();
+
+el("secbars").innerHTML = Object.entries(DATA.sections).map(([k, v]) =>
+  `<div class="secrow"><div class="name">${k}. ${esc(v.name)}<small>${v.full}점 · 평균 <span class="num">${fmt(v.mean)}</span></small></div>${bar(v.pct)}<div class="v num">${fmt(v.pct)}%</div></div>`).join("");
+
+el("themes").innerHTML = THEMES.map(t => `<div class="theme"><h3>${esc(t.t)}</h3><p>${esc(t.d)}</p><span class="where">관련 문항 ${t.w}</span></div>`).join("");
+
+const tb = el("qtable").querySelector("tbody");
+let rows = "", lastSec = "";
+DATA.questions.forEach(q => {
+  if (q.section !== lastSec) { lastSec = q.section; rows += `<tr class="sec"><td colspan="8">${q.section}. ${esc(DATA.sections[q.section].name)}</td></tr>`; }
+  rows += `<tr><td><a href="#${q.code}">${q.code}</a></td><td>${esc(q.title)}</td><td class="num">${q.full}</td><td class="num">${fmt(q.mean, 2)}</td><td class="num">${fmt(q.median, 2)}</td><td class="num">${fmt(q.pct)}%${bar(q.pct)}</td><td class="num">${q.n_full}</td><td class="num">${q.n_zero}</td></tr>`;
+});
+tb.innerHTML = rows;
+
+el("groups").innerHTML = Object.entries(DATA.sections).map(([k, sec]) => {
+  const qs = DATA.questions.filter(q => q.section === k);
+  return `<section class="qgroup"><h2>${k}. ${esc(sec.name)} <small>${sec.full}점 · 평균 ${fmt(sec.mean)} (${fmt(sec.pct)}%)</small></h2>${qs.map(card).join("")}</section>`;
+}).join("");
+
+function card(q) {
+  const c = C[q.code];
+  const split = q.cloze_points ? `<span>객관식 칸 ${q.cloze_points}점 + 서술 칸 ${q.essay_points}점</span>` : (q.essay_points ? `<span>서술형</span>` : "");
+  const pend = q.pending ? `<span>원문 확인 중 ${q.pending}명 제외</span>` : "";
+  const parts = q.parts.map(p => {
+    if (p.kind === "cloze") {
+      const wrong = p.top_wrong.map(([v, n]) => `<span class="chip">${esc(v)} · ${n}명</span>`).join("");
+      return `<div class="part"><div class="lab">${esc(p.label)}<em>${fmt(p.points, 2)}점 · 자동</em></div>${bar(p.correct_pct)}<div class="pc">${fmt(p.correct_pct)}%</div>
+        <div class="extra"><span class="chip ok">정답 ${esc(p.answer)}</span>${wrong ? `<span>흔한 오답</span>${wrong}` : ""}${p.blank_pct >= 10 ? `<span>빈칸 ${fmt(p.blank_pct)}%</span>` : ""}</div></div>`;
+    }
+    return `<div class="part"><div class="lab">${esc(p.label)}<em>${fmt(p.points, 2)}점</em></div>${bar(p.pct)}<div class="pc">${fmt(p.pct)}%</div>
+      <div class="extra"><span>만점 ${fmt(p.full_pct)}% · 0점 ${fmt(p.zero_pct)}%</span></div></div>`;
+  }).join("");
+  return `<article class="card" id="${q.code}">
+    <header><h3><span>${q.code}</span>${esc(q.title)}</h3><span class="num muted">${q.full}점</span></header>
+    <div class="qline"><span>평균 <b class="num">${fmt(q.mean, 2)}</b> (${fmt(q.pct)}%)</span><span>중앙값 <b class="num">${fmt(q.median, 2)}</b></span><span>만점 <b class="num">${q.n_full}</b>명</span><span>0점 <b class="num">${q.n_zero}</b>명</span>${split}${pend}</div>
+    <div class="point"><span class="eyebrow">확인하려던 것</span><p>${esc(c.point)}</p></div>
+    <div class="parts">${parts}</div>
+    <div class="notes"><h4>많이 틀린 부분</h4><ul>${c.miss.map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>
+    <p class="keep"><b>기억할 것</b> · ${esc(c.keep)}</p>
+  </article>`;
+}
+</script>
