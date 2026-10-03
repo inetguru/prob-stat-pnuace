@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수치적분 — 넓이를 조각내어 더하기</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+    --fill-a:rgba(59,79,216,.16); --fill-t:rgba(13,148,136,.18); --fill-s:rgba(217,125,23,.20); --fill-m:rgba(217,69,127,.14);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  pre{background:#0f172a; color:#e2e8f0; border-radius:8px; padding:14px 18px; overflow-x:auto;
+      font:13.5px/1.6 Consolas,monospace; margin:16px 0}
+  pre .c{color:#94a3b8}
+  pre .o{color:#5eead4}
+  a{color:var(--accent)}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cap{font-size:13.5px; color:var(--muted)}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card.mark{border-color:var(--accent); background:#eef1fe}
+  .card .lbl{display:inline-block; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  .tablewrap{overflow-x:auto; margin:18px 0}
+  table{border-collapse:collapse; width:100%; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace; white-space:nowrap}
+  td.best{color:var(--teal); font-weight:700}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .row{display:flex; flex-wrap:wrap; gap:10px 22px; align-items:flex-end; margin-bottom:12px}
+  .row > div{min-width:0}
+  .ctl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .ctl .val{font-family:Consolas,monospace; color:var(--accent); margin-left:6px}
+  .ctl input[type=range]{width:260px; max-width:100%; accent-color:var(--accent)}
+  select{font:inherit; font-size:14px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink)}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; flex-wrap:wrap}
+  .seg button{background:#fff; color:var(--body); border:0; border-right:1px solid var(--line);
+              padding:7px 13px; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer}
+  .seg button:last-child{border-right:0}
+  .seg button[aria-pressed="true"]{background:var(--accent); color:#fff}
+  button.go{background:var(--accent); color:#fff; border:none; border-radius:7px;
+    padding:8px 15px; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer}
+  button:focus-visible, select:focus-visible, input:focus-visible{outline:2px solid var(--orange); outline-offset:2px}
+  button.go:hover{opacity:.88}
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; background:var(--soft); text-align:center}
+  .tile .t{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.4px}
+  .tile .n{font-size:19px; font-weight:800; color:var(--ink); font-family:Consolas,monospace}
+  .tile .f{font-size:11px; color:var(--muted)}
+  .tile.hi{border-color:var(--accent); background:#eef1fe}
+  .tile.warn{border-color:var(--orange); background:#fdf1e3}
+  .legend{display:flex; gap:8px 18px; font-size:13px; color:var(--body); margin-top:8px; flex-wrap:wrap}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .legend i{width:16px; height:3px; display:inline-block; border-radius:2px}
+  .legend i.dash{background:repeating-linear-gradient(90deg,var(--pink) 0 5px,transparent 5px 9px)!important}
+  .legend i.dot{width:9px; height:9px; border-radius:50%}
+  canvas{max-width:100%; height:auto; display:block}
+  .pair{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+  .pair figure{margin:0}
+  .pair figcaption{font-size:13.5px; color:var(--body); margin-top:6px; text-align:center}
+  .hint{font-size:13.5px; color:var(--muted); margin-top:8px}
+  .tag{display:inline-block; font-size:11.5px; font-weight:800; color:#6d28d9; background:#f5f3ff;
+       border-radius:3px; padding:1px 6px; letter-spacing:.5px}
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+         color:var(--muted); font-size:13px}
+  @media (max-width:760px){
+    .cards,.cards.c2,.pair{grid-template-columns:1fr}
+    .tiles{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>수치적분 — 넓이를 조각내어 더하기</h1>
+<p class="sub">
+  확률통계 · Topic 11 보충자료 — 슬라이드 <b>12~13번 "수치적분은 무엇일까?" · "사다리꼴 공식은 무엇을 더하는가?"</b> ·
+  <b>15번 "느리다"</b> · <b>16번 "차원"</b>
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">슬라이드에서 본 것</span>
+    사다리꼴 공식 하나와, 직사각형·사다리꼴·Simpson의 오차가 각각
+    <b>O(1/n), O(1/n²), O(1/n⁴)</b>라는 한 줄. 그리고 "1차원에서는 몬테카를로(MC)가 진다"는 결론.
+  </div>
+  <div class="card">
+    <span class="lbl">이 노트가 답하는 것</span>
+    조각을 <b>어떻게</b> 내는지 그림으로 본다. 오차가 <b>왜</b> 그 속도로 줄어드는지,
+    그 속도가 MC의 1/√n과 <b>어떻게</b> 다른지, 차원이 오르면 왜 뒤집히는지 확인한다.
+  </div>
+  <div class="card">
+    <span class="lbl">어디서 이어지는가</span>
+    Topic 6 <b>확률 = PDF 아래 면적</b> · Topic 7 <b>norm.cdf</b> ·
+    Topic 10 <b>CLT와 1/√n</b> · Topic 11 <b>MC 적분</b>.
+    오차 공식의 증명은 <span class="tag">심화 주제</span>(수치해석)다.
+  </div>
+</div>
+
+<h2>1. 적분은 넓이이고, 넓이는 손으로 못 구할 때가 많다</h2>
+
+<p>
+  Topic 6에서 연속 확률변수의 확률은 <b>PDF 아래 면적</b>이라고 했다.
+  P[a ≤ X ≤ b] = ∫ₐᵇ f(x) dx. 문제는 이 면적을 공식으로 구할 수 없는 경우가 흔하다는 것이다.
+</p>
+
+<div class="eq">
+  ∫₀¹ e<sup>−x²</sup> dx = ?
+  <br><span class="cap">e<sup>−x²</sup> 의 부정적분은 초등함수(다항식·지수·로그·삼각함수의 조합)로 쓸 수 없다.
+  정규분포의 CDF Φ(z)도 같은 꼴이라, <code>stats.norm.cdf</code> 는 공식이 아니라 <b>수치 계산</b>으로 값을 낸다.</span>
+</div>
+
+<p>
+  그래도 넓이는 분명히 있다. 그러면 <b>근사</b>하면 된다. 방법은 두 갈래다.
+</p>
+
+<div class="cards c2">
+  <div class="card mark">
+    <span class="lbl">수치적분</span>
+    구간을 <b>규칙적인 격자</b>로 잘라 조각마다 넓이를 어림하고 더한다.
+    난수가 없어서 같은 n이면 <b>답이 늘 같다.</b>
+  </div>
+  <div class="card">
+    <span class="lbl">몬테카를로 적분</span>
+    점을 <b>무작위</b>로 뿌려 높이 g(Uᵢ)의 평균을 낸다.
+    돌릴 때마다 답이 조금씩 다르고, 그 흔들림을 <b>CLT로 잰다</b>(슬라이드 11).
+  </div>
+</div>
+
+<h2>2. 조각을 내는 세 가지 방법</h2>
+
+<p>
+  구간 [a, b]를 폭 <b>h = (b − a)/n</b> 인 조각 n개로 나누고, 경계점을 x₀ = a, x₁, …, xₙ = b 라 하자.
+  세 방법의 차이는 <b>한 조각 안에서 곡선을 무엇으로 바꿔 끼우느냐</b>뿐이다.
+</p>
+
+<div class="eq">
+  <b>직사각형</b> (왼쪽 끝) &nbsp; ∫ ≈ h · [ g(x₀) + g(x₁) + ⋯ + g(xₙ₋₁) ]
+  <br><span class="cap">조각 안에서 곡선을 <b>수평선</b>으로 바꾼다. 고등학교 구분구적법이다.</span>
+  <br><br>
+  <b>사다리꼴</b> &nbsp; ∫ ≈ h · [ ½g(x₀) + g(x₁) + ⋯ + g(xₙ₋₁) + ½g(xₙ) ]
+  <br><span class="cap">조각의 양 끝을 <b>직선</b>으로 잇는다. 안쪽 점은 이웃한 두 사다리꼴이 나눠 쓰므로 ½이 두 번 더해져 1이 된다.</span>
+  <br><br>
+  <b>Simpson</b> (n 이 짝수) &nbsp; ∫ ≈ (h/3) · [ g(x₀) + 4g(x₁) + 2g(x₂) + 4g(x₃) + ⋯ + 4g(xₙ₋₁) + g(xₙ) ]
+  <br><span class="cap">조각 <b>두 개</b>마다 세 점을 지나는 <b>포물선</b>을 끼운다. 가중치 1, 4, 2, 4, …, 4, 1 이 그 결과다.</span>
+</div>
+
+<div class="viz">
+  <h3>직접 해 보기 — 조각을 바꿔 끼우면 넓이가 어떻게 달라지나</h3>
+  <div class="row">
+    <div class="ctl">
+      <label for="a-fn">함수와 구간</label>
+      <select id="a-fn">
+        <option value="gauss">e^(−x²), [0, 1]</option>
+        <option value="normal">표준정규 PDF, [−2, 2]</option>
+        <option value="sin">sin x, [0, π]</option>
+      </select>
+    </div>
+    <div class="ctl">
+      <label>방법</label>
+      <div class="seg" id="a-method" role="group" aria-label="적분 방법">
+        <button type="button" data-m="left" aria-pressed="false">직사각형</button>
+        <button type="button" data-m="trap" aria-pressed="true">사다리꼴</button>
+        <button type="button" data-m="simp" aria-pressed="false">Simpson</button>
+        <button type="button" data-m="mc" aria-pressed="false">몬테카를로</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <label for="a-n">조각 수 n <span class="val" id="a-nv">4</span></label>
+      <input type="range" id="a-n" min="1" max="40" value="4">
+    </div>
+    <div><button type="button" class="go" id="a-redraw" hidden>난수 다시 뽑기</button></div>
+  </div>
+  <canvas id="a-cv" width="900" height="330" aria-label="곡선과 근사 조각 그림"></canvas>
+  <div class="legend">
+    <span><i style="background:var(--ink)"></i> 실제 곡선 g(x)</span>
+    <span><i class="box" style="width:14px;height:10px;background:var(--fill-t);border:1px solid var(--teal)"></i> 근사에 쓴 조각</span>
+    <span><i class="dot" style="background:var(--accent)"></i> g 를 계산한 점</span>
+  </div>
+  <div class="tiles">
+    <div class="tile hi"><div class="t">근사값</div><div class="n" id="a-est">–</div><div class="f" id="a-estf"></div></div>
+    <div class="tile"><div class="t">참값</div><div class="n" id="a-true">–</div><div class="f">scipy quad 기준</div></div>
+    <div class="tile warn"><div class="t">오차 |근사 − 참|</div><div class="n" id="a-err">–</div><div class="f" id="a-errf"></div></div>
+    <div class="tile"><div class="t">g 계산 횟수</div><div class="n" id="a-cnt">–</div><div class="f">점 개수</div></div>
+  </div>
+  <p class="hint" id="a-hint"></p>
+</div>
+
+<p>
+  n = 4 에서 방법만 바꿔 보면 차이가 눈에 들어온다. 직사각형은 곡선이 내려가는 구간에서 <b>계단이 곡선 위로 튀어나와</b>
+  넓이를 크게 잡는다. 사다리꼴은 직선이 곡선을 거의 따라가지만, 곡선이 휘는 만큼 <b>얇은 틈</b>이 남는다.
+  Simpson의 포물선은 그 휨까지 따라가서 틈이 눈에 보이지 않는다.
+</p>
+
+<h2>3. 오차가 줄어드는 속도 — 기울기가 곧 차수다</h2>
+
+<p>
+  O(1/n²) 같은 표기는 "n 을 늘리면 오차가 그 비율로 준다"는 뜻이다. 로그-로그 그래프에 그리면 <b>직선</b>이 되고,
+  그 <b>기울기</b>가 차수다. 아래 그림의 가로축은 <b>g 를 계산한 점의 개수</b>다. 같은 계산량에서 네 방법을 비교한다.
+</p>
+
+<div class="viz">
+  <h3>점 개수에 따른 오차 (로그-로그)</h3>
+  <div class="row">
+    <div class="ctl">
+      <label for="b-fn">함수와 구간</label>
+      <select id="b-fn">
+        <option value="gauss">e^(−x²), [0, 1]</option>
+        <option value="normal">표준정규 PDF, [−2, 2]</option>
+        <option value="sin">sin x, [0, π]</option>
+      </select>
+    </div>
+    <div><button type="button" class="go" id="b-go">MC 다시 돌리기</button></div>
+  </div>
+  <canvas id="b-cv" width="900" height="380" aria-label="점 개수와 오차의 로그-로그 그래프"></canvas>
+  <div class="legend">
+    <span><i style="background:var(--accent)"></i> 직사각형 · 기울기 −1</span>
+    <span><i style="background:var(--teal)"></i> 사다리꼴 · 기울기 −2</span>
+    <span><i style="background:var(--orange)"></i> Simpson · 기울기 −4</span>
+    <span><i class="dash"></i> MC 표준오차 σ/√N · 기울기 −½</span>
+    <span><i class="dot" style="background:var(--pink)"></i> MC 한 번 돌린 실제 오차</span>
+  </div>
+  <p class="hint">Simpson 선이 10⁻¹⁵ 근처에서 멈추는 것은 컴퓨터 실수 계산의 정밀도 한계(약 16자리)에 닿았기 때문이다.</p>
+</div>
+
+<p>
+  ∫₀¹ e<sup>−x²</sup> dx (참값 0.7468241328) 로 직접 계산한 <b>오차</b> |근사값 − 참값| 이다.
+  슬라이드 12의 카드에 적힌 <b>적분 근사값</b> 0.777817(직사각형) · 0.746211(사다리꼴) · 0.746825(Simpson)이
+  n = 10 줄의 오차에 대응한다.
+</p>
+
+<div class="tablewrap"><table>
+  <tr><th>조각 n (점 n+1개)</th><th class="num">직사각형</th><th class="num">사다리꼴</th><th class="num">Simpson</th><th class="num">MC 표준오차 (같은 점 수)</th></tr>
+  <tr><td>n = 10</td><td class="num">3.1 × 10⁻²</td><td class="num">6.1 × 10⁻⁴</td><td class="num best">8.2 × 10⁻⁷</td><td class="num">6.1 × 10⁻²</td></tr>
+  <tr><td>n = 100</td><td class="num">3.2 × 10⁻³</td><td class="num">6.1 × 10⁻⁶</td><td class="num best">8.2 × 10⁻¹¹</td><td class="num">2.0 × 10⁻²</td></tr>
+  <tr><td>n = 1,000</td><td class="num">3.2 × 10⁻⁴</td><td class="num">6.1 × 10⁻⁸</td><td class="num best">8.2 × 10⁻¹⁵</td><td class="num">6.4 × 10⁻³</td></tr>
+  <tr><td><b>n 을 10배 하면</b></td><td class="num">÷ 10</td><td class="num">÷ 100</td><td class="num">÷ 10,000</td><td class="num">÷ 3.16 (√10)</td></tr>
+</table></div>
+
+<h3>왜 그 속도인가 — 한 조각의 "틈"을 보면 된다</h3>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">직사각형 · 1/n</span>
+    한 조각 안에서 곡선은 기울기만큼 움직인다. 수평선과의 높이 차가 폭 h 에 <b>비례</b>하므로
+    조각 하나의 틈은 h × h = h². 조각이 n = 1/h 개이니 전체는 <b>h</b> 에 비례한다.
+  </div>
+  <div class="card">
+    <span class="lbl">사다리꼴 · 1/n²</span>
+    직선은 기울기까지 맞춘다. 남는 것은 <b>휨(2차 미분)</b>뿐인데, 그 높이 차는 h² 에 비례한다.
+    조각 하나의 틈은 h² × h = h³, 전체는 n × h³ = <b>h²</b>.
+  </div>
+  <div class="card mark">
+    <span class="lbl">Simpson · 1/n⁴</span>
+    포물선은 휨까지 맞춘다. 좌우 대칭으로 놓은 덕분에 3차 항의 어긋남도 상쇄되어,
+    남는 것은 4차 항이다. 그래서 전체 오차가 <b>h⁴</b> 에 비례한다.
+  </div>
+</div>
+
+<div class="note">
+  <b>"휘지 않는 함수"는 사다리꼴이 정확히 맞힌다.</b> 직선 g(x) = 3x + 1 은 n = 1 로도 오차가 0이다.
+  같은 이유로 Simpson은 <b>3차 다항식까지</b> 정확하다. 오차의 크기를 정하는 것은 함수가 얼마나 휘었는가(미분값)이다.
+</div>
+
+<h2>4. 그러면 MC는 왜 쓰나 — 1차원에서는 정말 진다</h2>
+
+<p>
+  위 표에서 점 11개로 Simpson은 소수점 여섯째 자리까지 맞히는데, MC는 같은 점 11개로 표준오차가 0.06이다.
+  슬라이드 14에서 MC로 점을 <b>100만 개</b> 뿌려 얻은 표준오차가 2.0 × 10⁻⁴ 였다. 사다리꼴은 점 <b>11개</b>로 그보다 정확하다.
+</p>
+
+<div class="eq">
+  MC 표준오차 = σ<sub>g</sub> / √N &nbsp;&nbsp;(e<sup>−x²</sup> 에서 σ<sub>g</sub> ≈ 0.201)
+  <br><span class="cap">기울기 −½ 은 Topic 10 CLT에서 온다. 표본평균의 흔들림은 √N 으로만 준다. 함수가 매끄러운지는 이 속도를 바꾸지 못한다.</span>
+</div>
+
+<p>
+  수치적분은 함수가 <b>매끄럽다</b>는 사실을 이용해 휨을 맞춰 넣는다. MC는 그런 정보를 쓰지 않고 그냥 평균을 낸다.
+  1차원에서 매끄러운 함수를 적분할 때 MC를 쓰는 것은 손해다(슬라이드 15).
+</p>
+
+<h2>5. 판이 뒤집히는 곳 — 차원</h2>
+
+<p>
+  격자의 약점은 <b>축마다</b> 점을 놓아야 한다는 것이다. 한 축을 10등분하면 2차원에서 10² = 100개,
+  10차원에서 10¹⁰ = 100억 개가 된다. 무작위 점은 차원과 상관없이 원하는 개수만큼만 뿌리면 된다.
+</p>
+
+<div class="viz">
+  <h3>같은 점 100개 — 격자와 무작위</h3>
+  <div class="pair">
+    <figure><canvas id="c-grid" width="420" height="420" aria-label="10×10 격자 점"></canvas>
+      <figcaption>격자 10 × 10 — 축마다 10개씩. 차원이 하나 늘면 ×10.</figcaption></figure>
+    <figure><canvas id="c-rand" width="420" height="420" aria-label="무작위 점 100개"></canvas>
+      <figcaption>무작위 100개 — 차원이 늘어도 100개 그대로.</figcaption></figure>
+  </div>
+  <div class="row" style="margin-top:12px"><button type="button" class="go" id="c-go">무작위 점 다시 뿌리기</button></div>
+</div>
+
+<p>
+  점의 총개수를 N 으로 고정하면, d 차원 격자는 축마다 N<sup>1/d</sup> 개밖에 놓지 못한다.
+  사다리꼴의 오차는 축당 점 수의 −2제곱이므로 <b>N<sup>−2/d</sup></b> 로 줄고, MC는 차원과 무관하게 <b>N<sup>−1/2</sup></b> 로 준다.
+</p>
+
+<div class="tablewrap"><table>
+  <tr><th>차원 d</th><th class="num">격자 점 수 (축마다 10등분)</th><th class="num">사다리꼴 오차 속도</th><th class="num">MC 오차 속도</th><th>더 나은 쪽 (매끄러운 함수)</th></tr>
+  <tr><td>1</td><td class="num">10</td><td class="num">N<sup>−2</sup></td><td class="num">N<sup>−1/2</sup></td><td>수치적분</td></tr>
+  <tr><td>2</td><td class="num">100</td><td class="num">N<sup>−1</sup></td><td class="num">N<sup>−1/2</sup></td><td>수치적분</td></tr>
+  <tr><td>4</td><td class="num">10,000</td><td class="num">N<sup>−1/2</sup></td><td class="num">N<sup>−1/2</sup></td><td>비슷하다</td></tr>
+  <tr><td>10</td><td class="num">100억</td><td class="num">N<sup>−1/5</sup></td><td class="num">N<sup>−1/2</sup></td><td><b>MC</b></td></tr>
+  <tr><td>20</td><td class="num">10<sup>20</sup></td><td class="num">N<sup>−1/10</sup></td><td class="num">N<sup>−1/2</sup></td><td><b>MC</b></td></tr>
+</table></div>
+
+<div class="link">
+  <b>이것이 차원의 저주(curse of dimensionality)다.</b> 슬라이드 16의 그림이 이 내용이다.
+  Simpson이라면 경계가 d = 8 로 늦춰질 뿐, 언젠가는 MC가 이긴다. 기계학습의 모수 공간, 베이지안 사후분포(Topic 13),
+  금융 시뮬레이션처럼 차원이 수십~수백인 적분에서 MC가 표준 도구인 이유다.
+</div>
+
+<h2>6. 실제로는 이렇게 쓴다</h2>
+
+<pre><span class="c"># 같은 점 11개(n = 10)로 사다리꼴과 Simpson</span>
+x = np.linspace(0, 1, 11)
+integrate.trapezoid(np.exp(-x**2), x)   <span class="o"># 0.7462107961317495</span>
+integrate.simpson(np.exp(-x**2), x=x)   <span class="o"># 0.7468249482544436</span>
+
+<span class="c"># 실무에서는 quad — 곡선이 많이 휘는 곳에 점을 더 촘촘히 놓는다</span>
+integrate.quad(lambda x: np.exp(-x**2), 0, 1)
+<span class="o"># (0.7468241328124271, 8.291413475940725e-15)   ← (값, 오차 추정)  g 계산 21번</span></pre>
+
+<p>
+  <code>quad</code> 는 적응형(adaptive) 방법이다. 구간을 나눠 보고 오차가 큰 조각만 다시 쪼갠다.
+  이 예에서는 g 를 <b>21번</b>만 계산하고 15자리를 맞혔다. 오차 추정도 함께 돌려준다.
+  다만 이 오차 추정은 MC의 표준오차처럼 확률적 의미가 있는 값이 아니라, 두 근사의 차이로 어림한 값이다.
+</p>
+
+<h2>7. 정리</h2>
+
+<div class="tablewrap"><table>
+  <tr><th style="width:150px"></th><th>수치적분 (사다리꼴 · Simpson · quad)</th><th>몬테카를로 적분</th></tr>
+  <tr><td><b>점을 놓는 법</b></td><td>규칙적인 격자 (quad 는 적응형)</td><td>무작위 U ~ Uniform(a, b)</td></tr>
+  <tr><td><b>같은 입력</b></td><td>답이 늘 같다</td><td>돌릴 때마다 조금씩 다르다</td></tr>
+  <tr><td><b>오차 속도</b></td><td>h², h⁴ — 함수가 매끄러울수록 빠르다</td><td>σ/√N — 함수와 무관</td></tr>
+  <tr><td><b>오차를 아는 법</b></td><td>차수(이론) 또는 두 근사의 차이</td><td>같은 표본으로 표준오차 · 신뢰구간 (CLT)</td></tr>
+  <tr><td><b>차원</b></td><td>격자가 10<sup>d</sup> 로 폭발한다</td><td>오차 식에 d 가 없다</td></tr>
+  <tr><td><b>잘 맞는 곳</b></td><td>저차원 · 매끄러운 함수</td><td>고차원 · 울퉁불퉁한 영역 · 표본만 뽑을 수 있는 분포</td></tr>
+</table></div>
+
+<div class="eq" style="border-left-color:var(--teal)">
+  <b>한 줄 요약</b> — 수치적분은 구간을 격자로 잘라 조각마다 곡선을 수평선·직선·포물선으로 바꿔 넓이를 더한다.
+  곡선을 잘 따라갈수록 오차가 1/n, 1/n², 1/n⁴ 로 빨리 줄어, 1차원에서는 MC(1/√N)를 압도한다.
+  그러나 격자는 차원마다 곱으로 늘어나므로, 차원이 오르면 차원과 무관한 MC가 이긴다.
+</div>
+
+<footer>
+  확률통계 (CB1501012) · 부산대학교 정보컴퓨터공학부 &nbsp;·&nbsp;
+  Topic 11 보충자료 &nbsp;·&nbsp;
+  오차 공식의 증명(Taylor 전개)과 Gauss 구적법은 이 과목의 심화 주제이며 시험 범위가 아니다 &nbsp;·&nbsp;
+  오류를 발견하면 알려 줄 것.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const FN = {
+    gauss:  { f: x => Math.exp(-x * x), a: 0, b: 1, truth: 0.7468241328124271, name: "e^(−x²)" },
+    normal: { f: x => Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI), a: -2, b: 2, truth: 0.9544997361036416, name: "φ(x)" },
+    sin:    { f: Math.sin, a: 0, b: Math.PI, truth: 2, name: "sin x" },
+  };
+  // 시드가 있는 난수 (mulberry32) — 같은 시드면 같은 점이 나온다
+  function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  function left(F, n){ const h = (F.b - F.a) / n; let s = 0; for (let k = 0; k < n; k++) s += F.f(F.a + k * h); return s * h; }
+  function trap(F, n){ const h = (F.b - F.a) / n; let s = (F.f(F.a) + F.f(F.b)) / 2; for (let k = 1; k < n; k++) s += F.f(F.a + k * h); return s * h; }
+  function simp(F, n){ const h = (F.b - F.a) / n; let s = F.f(F.a) + F.f(F.b);
+    for (let k = 1; k < n; k++) s += (k % 2 ? 4 : 2) * F.f(F.a + k * h); return s * h / 3; }
+  function mcPts(F, n, r){ const u = []; for (let i = 0; i < n; i++) u.push(F.a + (F.b - F.a) * r()); return u; }
+  function mc(F, u){ let s = 0; u.forEach(x => s += F.f(x)); return (F.b - F.a) * s / u.length; }
+  function sigmaG(F){ // Var[g(U)] 을 촘촘한 Simpson 으로 계산
+    const L = F.b - F.a, G = { f: x => F.f(x) ** 2, a: F.a, b: F.b };
+    const m = F.truth / L, m2 = simp(G, 2000) / L; return Math.sqrt(Math.max(m2 - m * m, 0)); }
+  const sci = v => { if (v === 0) return "0"; const e = Math.floor(Math.log10(Math.abs(v))); const m = v / 10 ** e;
+    return `${m.toFixed(1)}×10${String(e).replace("-", "⁻").replace(/\d/g, d => "⁰¹²³⁴⁵⁶⁷⁸⁹"[d])}`; };
+
+  // ── 그림 A ───────────────────────────────────────────────
+  const A = { fn: "gauss", m: "trap", n: 4, seed: 20260302 };
+  const aCv = $("a-cv"), aX = aCv.getContext("2d");
+  function aDraw(){
+    const F = FN[A.fn], W = aCv.width, H = aCv.height, L = 54, R = 20, T = 18, B = 40;
+    let n = A.n, note = "";
+    if (A.m === "simp" && n % 2) { n += 1; note = `Simpson 은 조각이 짝수여야 해서 n = ${n} 으로 계산했다. `; }
+    let ymax = 0; for (let i = 0; i <= 400; i++) ymax = Math.max(ymax, F.f(F.a + (F.b - F.a) * i / 400));
+    ymax *= 1.18;
+    const px = x => L + (x - F.a) / (F.b - F.a) * (W - L - R), py = y => H - B - y / ymax * (H - B - T);
+    aX.clearRect(0, 0, W, H);
+    // 축과 눈금
+    aX.strokeStyle = css("--line"); aX.lineWidth = 1; aX.fillStyle = css("--muted"); aX.font = "12px Malgun Gothic, sans-serif";
+    const yStep = ymax > 0.9 ? 0.25 : 0.1;
+    aX.textAlign = "right";
+    for (let y = 0; y <= ymax; y += yStep) { aX.beginPath(); aX.moveTo(L, py(y)); aX.lineTo(W - R, py(y)); aX.stroke(); aX.fillText(y.toFixed(2), L - 6, py(y) + 4); }
+    aX.textAlign = "center";
+    const xt = A.fn === "sin" ? [[0, "0"], [Math.PI / 2, "π/2"], [Math.PI, "π"]] :
+      Array.from({ length: 5 }, (_, i) => { const v = F.a + (F.b - F.a) * i / 4; return [v, (+v.toFixed(2)).toString()]; });
+    xt.forEach(([v, s]) => aX.fillText(s, px(v), H - B + 18));
+    aX.strokeStyle = css("--muted"); aX.beginPath(); aX.moveTo(L, py(0)); aX.lineTo(W - R, py(0)); aX.stroke();
+
+    const h = (F.b - F.a) / n, pts = [];
+    let est, cnt;
+    const tealFill = css("--fill-t"), teal = css("--teal");
+    function shape(path, fill, stroke){ aX.fillStyle = fill; aX.strokeStyle = stroke; aX.lineWidth = 1.2; aX.beginPath(); path(); aX.closePath(); aX.fill(); aX.stroke(); }
+    if (A.m === "left") {
+      for (let k = 0; k < n; k++) { const x0 = F.a + k * h, y = F.f(x0);
+        shape(() => { aX.moveTo(px(x0), py(0)); aX.lineTo(px(x0), py(y)); aX.lineTo(px(x0 + h), py(y)); aX.lineTo(px(x0 + h), py(0)); }, css("--fill-a"), css("--accent"));
+        pts.push([x0, y]); }
+      est = left(F, n); cnt = n;
+    } else if (A.m === "trap") {
+      for (let k = 0; k < n; k++) { const x0 = F.a + k * h, x1 = x0 + h;
+        shape(() => { aX.moveTo(px(x0), py(0)); aX.lineTo(px(x0), py(F.f(x0))); aX.lineTo(px(x1), py(F.f(x1))); aX.lineTo(px(x1), py(0)); }, tealFill, teal); }
+      for (let k = 0; k <= n; k++) pts.push([F.a + k * h, F.f(F.a + k * h)]);
+      est = trap(F, n); cnt = n + 1;
+    } else if (A.m === "simp") {
+      for (let k = 0; k < n; k += 2) {
+        const x0 = F.a + k * h, x1 = x0 + h, x2 = x0 + 2 * h, y0 = F.f(x0), y1 = F.f(x1), y2 = F.f(x2);
+        const P = x => y0 * (x - x1) * (x - x2) / ((x0 - x1) * (x0 - x2)) + y1 * (x - x0) * (x - x2) / ((x1 - x0) * (x1 - x2)) + y2 * (x - x0) * (x - x1) / ((x2 - x0) * (x2 - x1));
+        shape(() => { aX.moveTo(px(x0), py(0)); for (let i = 0; i <= 30; i++) { const x = x0 + 2 * h * i / 30; aX.lineTo(px(x), py(P(x))); } aX.lineTo(px(x2), py(0)); }, css("--fill-s"), css("--orange"));
+      }
+      for (let k = 0; k <= n; k++) pts.push([F.a + k * h, F.f(F.a + k * h)]);
+      est = simp(F, n); cnt = n + 1;
+    } else {
+      const u = mcPts(F, n, rng(A.seed)), mean = mc(F, u) / (F.b - F.a);
+      shape(() => { aX.moveTo(px(F.a), py(0)); aX.lineTo(px(F.a), py(mean)); aX.lineTo(px(F.b), py(mean)); aX.lineTo(px(F.b), py(0)); }, css("--fill-m"), css("--pink"));
+      aX.strokeStyle = css("--pink"); aX.lineWidth = 1;
+      u.forEach(x => { aX.beginPath(); aX.moveTo(px(x), py(0)); aX.lineTo(px(x), py(F.f(x))); aX.stroke(); pts.push([x, F.f(x)]); });
+      aX.fillStyle = css("--ink"); aX.textAlign = "left";
+      aX.fillText(`평균 높이 ${mean.toFixed(4)}  →  넓이 = 폭 × 평균 높이`, L + 8, py(mean) - 8);
+      est = mc(F, u); cnt = n;
+    }
+    // 곡선
+    aX.strokeStyle = css("--ink"); aX.lineWidth = 2.4; aX.beginPath();
+    for (let i = 0; i <= 400; i++) { const x = F.a + (F.b - F.a) * i / 400; i ? aX.lineTo(px(x), py(F.f(x))) : aX.moveTo(px(x), py(F.f(x))); }
+    aX.stroke();
+    aX.fillStyle = css("--accent"); pts.forEach(([x, y]) => { aX.beginPath(); aX.arc(px(x), py(y), 3.6, 0, 2 * Math.PI); aX.fill(); });
+
+    const err = Math.abs(est - F.truth);
+    $("a-est").textContent = est.toFixed(6);
+    $("a-estf").textContent = { left: "직사각형", trap: "사다리꼴", simp: "Simpson", mc: "몬테카를로" }[A.m] + ` · n = ${n}`;
+    $("a-true").textContent = F.truth.toFixed(6);
+    $("a-err").textContent = sci(err);
+    $("a-errf").textContent = A.m === "mc" ? `이론 표준오차 ${sci((F.b - F.a) * sigmaG(F) / Math.sqrt(n))}` : "";
+    $("a-cnt").textContent = cnt;
+    $("a-nv").textContent = A.n;
+    $("a-redraw").hidden = A.m !== "mc";
+    $("a-hint").textContent = note + (A.m === "mc"
+      ? "몬테카를로는 조각을 내지 않는다. 무작위 위치의 높이를 평균해 '폭 × 평균 높이'로 넓이를 잡는다. 다시 뽑을 때마다 값이 바뀐다."
+      : "n 을 두 배로 늘려 보면 오차가 직사각형은 약 ½, 사다리꼴은 약 ¼, Simpson은 약 1/16 로 준다.");
+  }
+  $("a-fn").addEventListener("change", e => { A.fn = e.target.value; aDraw(); });
+  $("a-n").addEventListener("input", e => { A.n = +e.target.value; aDraw(); });
+  $("a-method").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return;
+    A.m = b.dataset.m; $("a-method").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); aDraw(); });
+  $("a-redraw").addEventListener("click", () => { A.seed += 1; aDraw(); });
+
+  // ── 그림 B ───────────────────────────────────────────────
+  const B = { fn: "gauss", seed: 7 };
+  const bCv = $("b-cv"), bX = bCv.getContext("2d");
+  const NS = [...new Set(Array.from({ length: 40 }, (_, i) => Math.round(10 ** (Math.log10(3) + i * (3 - Math.log10(3)) / 39))))];
+  function bDraw(){
+    const F = FN[B.fn], W = bCv.width, H = bCv.height, L = 64, R = 20, T = 16, Bm = 46;
+    const X0 = Math.log10(3), X1 = 3, Y0 = -16, Y1 = 0;
+    const px = v => L + (Math.log10(v) - X0) / (X1 - X0) * (W - L - R);
+    const py = e => { const l = Math.log10(Math.max(e, 1e-16)); return T + (Y1 - Math.min(l, Y1)) / (Y1 - Y0) * (H - T - Bm); };
+    bX.clearRect(0, 0, W, H);
+    bX.font = "12px Malgun Gothic, sans-serif"; bX.lineWidth = 1;
+    for (let e = Y0; e <= Y1; e += 2) { bX.strokeStyle = css("--line"); bX.beginPath(); bX.moveTo(L, py(10 ** e)); bX.lineTo(W - R, py(10 ** e)); bX.stroke();
+      bX.fillStyle = css("--muted"); bX.textAlign = "right"; bX.fillText(e === 0 ? "1" : `10^${e}`, L - 6, py(10 ** e) + 4); }
+    [3, 10, 30, 100, 300, 1000].forEach(v => { bX.strokeStyle = css("--line"); bX.beginPath(); bX.moveTo(px(v), T); bX.lineTo(px(v), H - Bm); bX.stroke();
+      bX.fillStyle = css("--muted"); bX.textAlign = "center"; bX.fillText(v.toLocaleString(), px(v), H - Bm + 18); });
+    bX.fillStyle = css("--ink"); bX.textAlign = "center"; bX.fillText("g 를 계산한 점의 개수 N (로그 눈금)", (L + W - R) / 2, H - 6);
+    bX.save(); bX.translate(14, (T + H - Bm) / 2); bX.rotate(-Math.PI / 2); bX.fillText("오차 (로그 눈금)", 0, 0); bX.restore();
+
+    function curve(fnErr, col, filt){
+      bX.strokeStyle = col; bX.lineWidth = 2.6; bX.setLineDash([]); bX.beginPath(); let first = true;
+      NS.forEach(N => { if (filt && !filt(N)) return; const y = py(fnErr(N)); if (first) { bX.moveTo(px(N), y); first = false; } else bX.lineTo(px(N), y); });
+      bX.stroke();
+    }
+    curve(N => Math.abs(left(F, N) - F.truth), css("--accent"));
+    curve(N => Math.abs(trap(F, N - 1) - F.truth), css("--teal"));
+    curve(N => Math.abs(simp(F, N - 1) - F.truth), css("--orange"), N => (N - 1) % 2 === 0);
+    const sg = (F.b - F.a) * sigmaG(F);
+    bX.strokeStyle = css("--pink"); bX.lineWidth = 2; bX.setLineDash([6, 4]); bX.beginPath();
+    NS.forEach((N, i) => i ? bX.lineTo(px(N), py(sg / Math.sqrt(N))) : bX.moveTo(px(N), py(sg / Math.sqrt(N)))); bX.stroke(); bX.setLineDash([]);
+    const r = rng(B.seed); bX.fillStyle = css("--pink");
+    NS.forEach(N => { const e = Math.abs(mc(F, mcPts(F, N, r)) - F.truth); bX.beginPath(); bX.arc(px(N), py(e), 3.2, 0, 2 * Math.PI); bX.fill(); });
+    if (B.fn === "sin") { bX.fillStyle = css("--muted"); bX.textAlign = "left";
+      bX.fillText("sin x 는 양 끝 값이 0 이라 직사각형과 사다리꼴이 같은 값이 된다 — 선이 겹친다", L + 8, T + 14); }
+  }
+  $("b-fn").addEventListener("change", e => { B.fn = e.target.value; bDraw(); });
+  $("b-go").addEventListener("click", () => { B.seed += 1; bDraw(); });
+
+  // ── 그림 C ───────────────────────────────────────────────
+  let cSeed = 11;
+  function square(cv, pts){
+    const x = cv.getContext("2d"), S = cv.width, P = 26;
+    x.clearRect(0, 0, S, S); x.strokeStyle = css("--muted"); x.lineWidth = 1.2; x.strokeRect(P, P, S - 2 * P, S - 2 * P);
+    x.fillStyle = css("--accent");
+    pts.forEach(([u, v]) => { x.beginPath(); x.arc(P + u * (S - 2 * P), P + (1 - v) * (S - 2 * P), 4.2, 0, 2 * Math.PI); x.fill(); });
+  }
+  function cDraw(){
+    const g = []; for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) g.push([(i + .5) / 10, (j + .5) / 10]);
+    square($("c-grid"), g);
+    const r = rng(cSeed), q = []; for (let i = 0; i < 100; i++) q.push([r(), r()]);
+    square($("c-rand"), q);
+  }
+  $("c-go").addEventListener("click", () => { cSeed += 1; cDraw(); });
+
+  aDraw(); bDraw(); cDraw();
+})();
+</script>
+</body>
+</html>
