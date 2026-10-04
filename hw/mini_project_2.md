@@ -96,6 +96,22 @@ Topic 14의 함정 목록을 체크리스트로 쓰면서 자기 분석을 점�
 
 **파일명**: `Project2_학번.*` (이름은 쓰지 않는다) · **제출처**: Google Classroom
 
+### 보고서 템플릿 — Markdown 권장
+
+**[mini_project_2_report_template.md](mini_project_2_report_template.md)** 에 보고서 뼈대가 있다.
+절 제목이 위 ①~⑤ 와 같고, 절마다 배점·분량·무엇을 쓸지가 적혀 있다.
+
+1. GitHub 에서 템플릿을 열고 오른쪽 위 **Raw → 다른 이름으로 저장** (또는 ⬇ 버튼)으로 내려받아
+   이름을 `Project2_학번.md` 로 바꾼다. ⚠️ 쓰는 법과 절별 안내는 `<!-- 주석 -->` 이라 GitHub 화면에는 안 보이고
+   **내려받은 파일에서 보인다.** 주석은 PDF 에 나오지 않으니 지우지 않아도 된다.
+2. 그림은 노트북에서 `plt.savefig("figs/fig1_hist.png", dpi=150, bbox_inches="tight")` 로 저장하고
+   `![그림 1](figs/fig1_hist.png)` 로 넣는다. 수식은 `$...$` 로 쓴다.
+3. Markdown 을 PDF 로 내보낼 수 있는 편집기를 쓴다 — 예: **VS Code + Markdown Preview Enhanced**,
+   **Obsidian**, **Typora**. 내보낸 PDF 에서 그림과 수식이 제대로 보이는지 꼭 확인한다.
+
+> 💡 **Markdown 이 필수는 아니다.** Word · 한글 · Google Docs 로 써도 된다.
+> 다만 **절 구성과 순서는 템플릿을 그대로 따른다** — 채점자가 루브릭 순서대로 찾는다. 분량은 6~10쪽(⑤가 1쪽 이상).
+
 ---
 
 ## 5. 채점 루브릭 (100점)
