@@ -7,6 +7,7 @@
      (노트북에서 plt.savefig("figs/fig1_hist.png", dpi=150, bbox_inches="tight"))
   3. ( ) 안의 안내문을 지우고 내용을 채운다. 이런 <!- - 주석 - -> 은 PDF 에 나오지 않으니 지우지 않아도 된다.
   4. PDF 로 내보내 Project1_학번.pdf 로 제출한다. 분량은 4~6쪽.
+     노트북은 Project1_학번.ipynb, 데이터는 Project1_학번.csv 로 함께 제출한다 (예: Project1_202612345.pdf).
 
   ⚠️ Markdown 은 권장일 뿐이다. Word · 한글 · Google Docs 로 써도 되지만,
      아래 절 구성(①~④)과 순서는 그대로 따른다 — 채점자가 루브릭 순서대로 찾는다.
@@ -123,6 +124,6 @@
 
 ## 참고
 
-- 데이터: (데이터셋 이름, URL, 내려받은 날짜)
+- 데이터: (데이터셋 이름, URL, 내려받은 날짜) — 제출 파일 `Project1_학번.csv`
 - 분석 노트북: `Project1_학번.ipynb`
 - (그 밖에 참고한 자료)
