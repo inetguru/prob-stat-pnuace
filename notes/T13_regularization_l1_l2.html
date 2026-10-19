@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>L1 · L2 정규화 — prior가 벌점이 되는 이유</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  pre{background:#0f172a; color:#e2e8f0; border-radius:8px; padding:14px 18px; overflow-x:auto;
+      font:13.5px/1.6 Consolas,monospace; margin:16px 0}
+  pre .c{color:#94a3b8}
+  pre .o{color:#5eead4}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cap{font-size:13.5px; color:var(--muted)}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card.mark{border-color:var(--accent); background:#eef1fe}
+  .card .lbl{display:table; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  .tablewrap{overflow-x:auto; margin:18px 0}
+  table{border-collapse:collapse; width:100%; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace; white-space:nowrap}
+  ul{padding-left:22px} li{margin:6px 0}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .row{display:flex; flex-wrap:wrap; gap:10px 22px; align-items:flex-end; margin-bottom:12px}
+  .ctl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .ctl .val{font-family:Consolas,monospace; color:var(--accent); margin-left:6px}
+  .ctl input[type=range]{width:240px; max-width:100%; accent-color:var(--accent)}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+  .seg button{background:#fff; color:var(--body); border:0; border-right:1px solid var(--line);
+              padding:7px 13px; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer}
+  .seg button:last-child{border-right:0}
+  .seg button:hover{background:var(--soft)}
+  button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  canvas{max-width:100%; height:auto; display:block}
+  .split{display:grid; grid-template-columns:auto 1fr; gap:22px; align-items:start}
+  .readout{font-size:14.5px; line-height:1.9}
+  .readout .k{font-family:Consolas,monospace; color:var(--ink); font-weight:700}
+  .tag{display:inline-block; font-size:12px; font-weight:800; color:#6d28d9; background:#f3e8ff;
+       border-radius:3px; padding:1px 7px}
+  .legend{display:flex; flex-wrap:wrap; gap:6px 18px; font-size:13.5px; margin:8px 0 0}
+  .legend span::before{content:""; display:inline-block; width:18px; height:3px; margin-right:6px;
+       vertical-align:middle; background:currentColor}
+  @media (max-width:760px){
+    .cards,.cards.c2,.split{grid-template-columns:1fr}
+    .wrap{padding:32px 16px 72px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>L1 · L2 정규화 — prior가 벌점이 되는 이유</h1>
+<p class="sub">
+  확률통계 · Topic 13 보충자료 — 슬라이드 <b>20번 "MAP — posterior의 최빈값"</b> ·
+  <b>32번 "→AI 연결점 — L2 정규화 = Gaussian prior"</b>
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">슬라이드에서 본 것</span>
+    MAP을 최소화 꼴로 쓰면 벌점 항이 <b>−log p(θ)</b> 라는 것.
+    그리고 "L2 정규화 = Gaussian prior, L1은 Laplace prior"라는 한 줄.
+  </div>
+  <div class="card">
+    <span class="lbl">이 노트가 답하는 것</span>
+    L1·L2의 <b>L은 무엇</b>인가. 벌점이 <b>왜</b> prior에서 나오는가.
+    L1은 왜 가중치를 <b>정확히 0</b>으로 만들고 L2는 그러지 않는가.
+  </div>
+  <div class="card">
+    <span class="lbl">어디서 이어지는가</span>
+    Topic 7 <b>Laplace 분포</b> · Topic 12 <b>과적합과 NLL</b> ·
+    Topic 13 <b>MAP과 prior의 세기</b>.
+    다차원 회귀와 최적화 이론은 <span class="tag">심화 주제</span>다.
+  </div>
+</div>
+
+<h2>1. L은 무엇인가 — 크기를 재는 여러 방법</h2>
+
+<p>
+  L은 프랑스 수학자 <b>Henri Lebesgue(앙리 르베그)</b>의 머리글자다. 그가 정리한 함수 공간
+  <b>L<sup>p</sup></b> 에서 이름이 왔다. L1·L2는 벡터 w = (w<sub>1</sub>, …, w<sub>d</sub>) 의
+  <b>"크기"(노름, norm)를 재는 두 가지 방법</b>이다.
+</p>
+
+<div class="eq">
+  ‖w‖<sub>p</sub> = ( |w<sub>1</sub>|<sup>p</sup> + |w<sub>2</sub>|<sup>p</sup> + ⋯ + |w<sub>d</sub>|<sup>p</sup> )<sup>1/p</sup>
+  <div class="cap">p = 1 이면 L1, p = 2 이면 L2 노름</div>
+</div>
+
+<div class="tablewrap">
+<table>
+  <tr><th></th><th>정의</th><th>별명</th><th class="num">w = (3, 4)</th></tr>
+  <tr><td><b>L1</b></td><td>|w<sub>1</sub>| + |w<sub>2</sub>| + ⋯</td><td>맨해튼 거리 — 격자 길을 따라 걷기</td><td class="num">7</td></tr>
+  <tr><td><b>L2</b></td><td>√(w<sub>1</sub>² + w<sub>2</sub>² + ⋯)</td><td>유클리드 거리 — 직선 거리</td><td class="num">5</td></tr>
+  <tr><td>L4</td><td>(w<sub>1</sub>⁴ + w<sub>2</sub>⁴ + ⋯)<sup>1/4</sup></td><td>p가 커질수록 가장 큰 성분에 가까워진다</td><td class="num">4.285</td></tr>
+</table>
+</div>
+
+<div class="viz">
+  <h3>직접 해보기 — 크기가 1인 점들은 어떤 모양일까</h3>
+  <p style="margin-top:0">
+    ‖w‖<sub>p</sub> = 1 인 점을 모두 그린 것이 <b>단위 공(unit ball)</b>이다.
+    p = 2 이면 원, p = 1 이면 <b>모서리가 축 위에 있는 마름모</b>가 된다. 이 모서리가 4절의 주인공이다.
+  </p>
+  <div class="row">
+    <div class="ctl">
+      <label for="p-sl">p <span class="val" id="p-val">1.0</span></label>
+      <input type="range" id="p-sl" min="0.5" max="6" step="0.1" value="1">
+    </div>
+    <div class="seg" role="group" aria-label="p 값 바로 고르기">
+      <button type="button" data-p="1">L1</button>
+      <button type="button" data-p="2">L2</button>
+      <button type="button" data-p="6">p = 6</button>
+    </div>
+  </div>
+  <div class="split">
+    <canvas id="ball-cv" width="380" height="380" aria-label="L-p 단위 공의 모양"></canvas>
+    <div class="readout" id="ball-out"></div>
+  </div>
+</div>
+
+<h2>2. 정규화 — 손실에 벌점을 더한다</h2>
+
+<p>
+  머신러닝은 손실을 <b>최소화</b>해서 가중치를 정한다. 데이터에만 맞추면 가중치가 과하게 커져
+  훈련 데이터에만 잘 맞는 <b>과적합</b>이 생긴다 (Topic 12 →AI). 그래서 가중치의 크기에 <b>벌점</b>을 붙인다.
+</p>
+
+<div class="eq">
+  최소화할 것 = 손실(데이터에 안 맞는 정도) + λ × 벌점(가중치의 크기)
+  <div class="cap">λ(람다)가 클수록 벌점이 세다 — 가중치를 0 쪽으로 더 세게 당긴다</div>
+</div>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">L2 정규화</span>
+    벌점 = w<sub>1</sub>² + w<sub>2</sub>² + ⋯ (L2 노름의 <b>제곱</b>)<br>
+    다른 이름 — <b>Ridge</b>, 신경망에서는 <b>weight decay</b>
+  </div>
+  <div class="card">
+    <span class="lbl">L1 정규화</span>
+    벌점 = |w<sub>1</sub>| + |w<sub>2</sub>| + ⋯ (L1 노름)<br>
+    다른 이름 — <b>Lasso</b>
+  </div>
+</div>
+
+<h2>3. 벌점은 어디서 오는가 — prior의 −log</h2>
+
+<p>
+  슬라이드 20의 MAP 식을 다시 보자. 최대화를 최소화로 바꾸려면 부호를 뒤집는다.
+</p>
+
+<div class="eq">
+  θ̂<sub>MAP</sub> = argmax [ log p(x | θ) + log p(θ) ]
+  = argmin [ <span style="color:var(--accent)">−log p(x | θ)</span> + <span style="color:var(--orange)">(−log p(θ))</span> ]
+  <div class="cap">파란 부분이 손실(NLL, Topic 12), 주황 부분이 벌점이다. <b>벌점 = −log prior</b></div>
+</div>
+
+<p>"가중치는 0 근처일 것 같다"는 prior를 두 가지 모양으로 써 보면:</p>
+
+<div class="tablewrap">
+<table>
+  <tr><th>prior</th><th>밀도</th><th>−log p(w)</th><th>정규화</th></tr>
+  <tr><td><b>Gaussian</b> N(0, τ²)</td><td>∝ e<sup>−w²/(2τ²)</sup> — 0에서 <b>둥근</b> 봉우리</td>
+      <td>w² / (2τ²) + 상수</td><td><b>L2</b>, λ = 1/(2τ²)</td></tr>
+  <tr><td><b>Laplace</b>(0, b)</td><td>∝ e<sup>−|w|/b</sup> — 0에서 <b>뾰족한</b> 봉우리</td>
+      <td>|w| / b + 상수</td><td><b>L1</b>, λ = 1/b</td></tr>
+</table>
+</div>
+
+<div class="link">
+  <b>prior의 세기 = 정규화의 세기.</b>
+  prior가 좁을수록(τ, b가 작을수록) λ가 커진다. 슬라이드 7에서 본
+  "강한 prior는 데이터를 이기려면 더 많은 데이터가 필요하다"가 머신러닝에서는
+  "λ를 크게 잡으면 가중치가 데이터를 덜 따른다"가 된다.
+  상수는 argmin 위치를 바꾸지 않으니 버려도 된다 — 슬라이드 20에서 evidence를 버린 것과 같은 이유다.
+</div>
+
+<h2>4. 왜 L1은 정확히 0을 만드는가</h2>
+
+<h3>가중치가 하나일 때 — 공식으로 보기</h3>
+
+<p>
+  가장 단순한 경우를 보자. 데이터만 보면 가중치가 m 이 되는 상황에서 (손실 = (w − m)²/2),
+  벌점을 더한 최소점은 손으로 풀린다.
+</p>
+
+<div class="tablewrap">
+<table>
+  <tr><th></th><th>최소화할 것</th><th>최소점 w*</th><th>성질</th></tr>
+  <tr><td><b>L2</b></td><td>(w − m)²/2 + λ·w²/2</td><td>m / (1 + λ)</td><td>λ가 커져도 <b>0에 다가갈 뿐 닿지 않는다</b></td></tr>
+  <tr><td><b>L1</b></td><td>(w − m)²/2 + λ·|w|</td><td>m − λ (단, λ ≥ m 이면 <b>정확히 0</b>)</td><td>λ가 m 을 넘는 순간 <b>0에 붙는다</b></td></tr>
+</table>
+</div>
+
+<pre><span class="c"># m = 1.5 일 때 (손으로도 확인할 수 있다)</span>
+m = 1.5
+for lam in [0, 0.5, 1, 1.5, 2]:
+    print(lam, "L2", m / (1 + lam), "L1", max(m - lam, 0))
+<span class="o">0   L2 1.5   L1 1.5
+0.5 L2 1.0   L1 1.0
+1   L2 0.75  L1 0.5
+1.5 L2 0.6   L1 0.0
+2   L2 0.5   L1 0</span></pre>
+
+<p>
+  L1 의 공식을 <b>soft thresholding</b>(부드러운 문턱)이라 부른다. 작은 가중치는 통째로 0이 된다.
+  Laplace prior의 봉우리가 0에서 <b>뾰족하기</b> 때문이다. Gaussian은 0에서 둥글어서,
+  0 근처로 당기기는 해도 정확히 0에 세우지는 못한다.
+</p>
+
+<div class="viz">
+  <h3>직접 해보기 — λ를 키우면 가중치가 어떻게 줄어드나</h3>
+  <div class="row">
+    <div class="ctl">
+      <label for="m-sl">데이터만 볼 때의 가중치 m <span class="val" id="m-val">1.50</span></label>
+      <input type="range" id="m-sl" min="0.3" max="2.5" step="0.05" value="1.5">
+    </div>
+    <div class="ctl">
+      <label for="l-sl">벌점 세기 λ <span class="val" id="l-val">1.00</span></label>
+      <input type="range" id="l-sl" min="0" max="3" step="0.05" value="1">
+    </div>
+  </div>
+  <canvas id="shr-cv" width="900" height="300" aria-label="벌점 세기에 따른 최소점 그래프"></canvas>
+  <div class="legend"><span style="color:#3b4fd8">L2 — m/(1+λ)</span><span style="color:#d97d17">L1 — max(m−λ, 0)</span></div>
+  <p class="readout" id="shr-out"></p>
+</div>
+
+<h3>가중치가 둘일 때 — 그림으로 보기</h3>
+
+<p>
+  벌점을 더하는 것은 "가중치의 크기를 t 이하로 제한하고 손실을 최소화하는 것"과 같다
+  (λ와 t가 일대일로 대응한다). 그러면 답은 <b>손실의 등고선(타원)이 단위 공을 처음 건드리는 점</b>이다.
+  L1 공은 마름모라서 <b>모서리</b>가 먼저 닿기 쉽다. 모서리는 축 위에 있고, 축 위에서는 한 가중치가 0이다.
+</p>
+
+<div class="viz">
+  <h3>직접 해보기 — 등고선이 어디에 먼저 닿는가</h3>
+  <div class="row">
+    <div class="ctl">
+      <label for="c1-sl">손실 최소점 w₁ <span class="val" id="c1-val">2.00</span></label>
+      <input type="range" id="c1-sl" min="-2.2" max="2.2" step="0.05" value="2">
+    </div>
+    <div class="ctl">
+      <label for="c2-sl">손실 최소점 w₂ <span class="val" id="c2-val">0.30</span></label>
+      <input type="range" id="c2-sl" min="-2.2" max="2.2" step="0.05" value="0.3">
+    </div>
+    <div class="ctl">
+      <label for="t-sl">허용 크기 t <span class="val" id="t-val">1.00</span></label>
+      <input type="range" id="t-sl" min="0.2" max="2" step="0.05" value="1">
+    </div>
+  </div>
+  <div class="split">
+    <canvas id="geo-cv" width="440" height="440" aria-label="손실 등고선과 L1 L2 제약 영역"></canvas>
+    <div class="readout" id="geo-out"></div>
+  </div>
+  <div class="legend"><span style="color:#3b4fd8">L2 공 (원)과 그 답</span><span style="color:#d97d17">L1 공 (마름모)과 그 답</span><span style="color:#97a3b6">손실 등고선</span></div>
+</div>
+
+<div class="note">
+  <b>그래서 L1은 특징 선택을 한다.</b> 가중치가 수천 개일 때 L1 정규화를 쓰면 쓸모없는 특징의 가중치가
+  정확히 0이 되어 모델에서 빠진다(<b>sparsity</b>, 희소성). L2는 모든 가중치를 골고루 조금씩 줄여
+  모델을 부드럽게 만든다. 둘을 섞은 것을 <b>Elastic net</b>이라 부른다.
+</div>
+
+<h2>5. 정리</h2>
+
+<div class="tablewrap">
+<table>
+  <tr><th></th><th>L2 정규화</th><th>L1 정규화</th></tr>
+  <tr><td>벌점</td><td>Σ w<sub>i</sub>²</td><td>Σ |w<sub>i</sub>|</td></tr>
+  <tr><td>대응하는 prior</td><td>Gaussian — 0에서 둥근 봉우리</td><td>Laplace — 0에서 뾰족한 봉우리</td></tr>
+  <tr><td>단위 공 모양</td><td>원</td><td>마름모 (축 위의 모서리)</td></tr>
+  <tr><td>가중치에 하는 일</td><td>골고루 줄인다 · 0이 되지 않는다</td><td>작은 것을 정확히 0으로 만든다</td></tr>
+  <tr><td>다른 이름</td><td>Ridge · weight decay</td><td>Lasso</td></tr>
+</table>
+</div>
+
+<div class="link">
+  <b>이 과목에서의 위치.</b> 회귀분석과 다차원 가중치는 이 과목에서 다루지 않는다.
+  슬라이드 32는 결론만, 슬라이드 33 <span class="tag">심화</span>는 "그 유도와 정규화 이론"을 다음 단계로 남겼다.
+  이 노트의 1·2차원 예는 그 다리를 놓기 위한 것이다.
+</div>
+
+</div>
+
+<script>
+(function(){
+  const C = {accent:"#3b4fd8", orange:"#d97d17", muted:"#97a3b6", line:"#e6eaf1", ink:"#0f172a", body:"#4b5768"};
+
+  function setupCanvas(cv){
+    const ctx = cv.getContext("2d");
+    return ctx;
+  }
+
+  /* ---------- 1. L^p unit ball ---------- */
+  const ballCv = document.getElementById("ball-cv"), bctx = setupCanvas(ballCv);
+  const pSl = document.getElementById("p-sl"), pVal = document.getElementById("p-val"), ballOut = document.getElementById("ball-out");
+
+  function ballPath(ctx, p, cx, cy, s){
+    ctx.beginPath();
+    const N = 720;
+    for(let i=0;i<=N;i++){
+      const th = 2*Math.PI*i/N, c = Math.cos(th), sn = Math.sin(th);
+      const x = Math.sign(c)*Math.pow(Math.abs(c), 2/p), y = Math.sign(sn)*Math.pow(Math.abs(sn), 2/p);
+      const X = cx + s*x, Y = cy - s*y;
+      if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+    }
+    ctx.closePath();
+  }
+
+  function drawBall(){
+    const p = parseFloat(pSl.value); pVal.textContent = p.toFixed(1);
+    const W = ballCv.width, H = ballCv.height, cx = W/2, cy = H/2, s = 140;
+    bctx.clearRect(0,0,W,H);
+    bctx.strokeStyle = C.line; bctx.lineWidth = 1;
+    bctx.beginPath(); bctx.moveTo(20,cy); bctx.lineTo(W-20,cy); bctx.moveTo(cx,20); bctx.lineTo(cx,H-20); bctx.stroke();
+    bctx.fillStyle = C.muted; bctx.font = "13px Consolas, monospace";
+    bctx.fillText("w1", W-40, cy-8); bctx.fillText("w2", cx+8, 34);
+    bctx.fillText("1", cx+s-4, cy+18); bctx.fillText("1", cx-16, cy-s+4);
+    [[1,C.orange],[2,C.accent]].forEach(([q,col])=>{
+      ballPath(bctx,q,cx,cy,s); bctx.setLineDash([5,5]); bctx.strokeStyle = col; bctx.globalAlpha = .45; bctx.lineWidth = 1.5; bctx.stroke();
+    });
+    bctx.setLineDash([]); bctx.globalAlpha = 1;
+    ballPath(bctx,p,cx,cy,s); bctx.fillStyle = "rgba(59,79,216,.10)"; bctx.fill();
+    bctx.strokeStyle = C.ink; bctx.lineWidth = 2.6; bctx.stroke();
+    const n34 = Math.pow(Math.pow(3,p)+Math.pow(4,p), 1/p);
+    let shape = p < 0.95 ? "안쪽으로 오목한 별 모양 — p &lt; 1 은 노름이 아니다" :
+                p < 1.05 ? "<b>마름모</b> — 모서리 4개가 모두 축 위에 있다" :
+                p < 1.95 ? "마름모와 원 사이 — 모서리가 둥글어지는 중" :
+                p < 2.05 ? "<b>원</b> — 모든 방향이 같은 대접을 받는다" :
+                           "점점 정사각형에 가까워진다 — 가장 큰 성분만 본다";
+    ballOut.innerHTML =
+      `<div><span class="k">p = ${p.toFixed(1)}</span></div>` +
+      `<div>모양: ${shape}</div>` +
+      `<div>‖(3, 4)‖<sub>p</sub> = <span class="k">${n34.toFixed(3)}</span></div>` +
+      `<div style="color:#97a3b6;font-size:13.5px">점선 — 주황 L1, 파랑 L2 (비교용)</div>`;
+  }
+  pSl.addEventListener("input", drawBall);
+  document.querySelectorAll("[data-p]").forEach(b=>b.addEventListener("click",()=>{pSl.value=b.dataset.p; drawBall();}));
+  drawBall();
+
+  /* ---------- 2. 1-D shrinkage ---------- */
+  const shrCv = document.getElementById("shr-cv"), sctx = setupCanvas(shrCv);
+  const mSl = document.getElementById("m-sl"), lSl = document.getElementById("l-sl");
+  const mVal = document.getElementById("m-val"), lVal = document.getElementById("l-val"), shrOut = document.getElementById("shr-out");
+
+  function drawShr(){
+    const m = parseFloat(mSl.value), lam = parseFloat(lSl.value);
+    mVal.textContent = m.toFixed(2); lVal.textContent = lam.toFixed(2);
+    const W = shrCv.width, H = shrCv.height, L = 78, R = 24, T = 18, B = 42;
+    const X = v => L + (W-L-R)*v/3, Y = v => H-B - (H-T-B)*v/2.6;
+    sctx.clearRect(0,0,W,H);
+    sctx.strokeStyle = C.line; sctx.lineWidth = 1; sctx.fillStyle = C.muted; sctx.font = "13px Consolas, monospace";
+    for(let v=0; v<=2.5; v+=0.5){ sctx.beginPath(); sctx.moveTo(L,Y(v)); sctx.lineTo(W-R,Y(v)); sctx.stroke(); sctx.fillText(v.toFixed(1), L-32, Y(v)+4); }
+    for(let v=0; v<=3; v+=0.5){ sctx.fillText(v.toFixed(1), X(v)-10, H-B+20); }
+    sctx.fillStyle = C.body; sctx.font = "13px 'Malgun Gothic', sans-serif";
+    sctx.fillText("벌점 세기 λ", W/2-30, H-6); sctx.save(); sctx.translate(18, H/2+30); sctx.rotate(-Math.PI/2); sctx.fillText("최소점 w*", 0, 0); sctx.restore();
+    function curve(f, col, dash){
+      sctx.beginPath(); for(let i=0;i<=300;i++){ const l=3*i/300, y=f(l); if(i===0) sctx.moveTo(X(l),Y(y)); else sctx.lineTo(X(l),Y(y)); }
+      sctx.setLineDash(dash); sctx.strokeStyle = col; sctx.lineWidth = 2.8; sctx.stroke(); sctx.setLineDash([]);
+    }
+    curve(l => m/(1+l), C.accent, []);
+    curve(l => Math.max(m-l, 0), C.orange, [8,5]);
+    sctx.strokeStyle = C.ink; sctx.lineWidth = 1.2; sctx.setLineDash([3,4]);
+    sctx.beginPath(); sctx.moveTo(X(lam),T); sctx.lineTo(X(lam),H-B); sctx.stroke(); sctx.setLineDash([]);
+    const w2 = m/(1+lam), w1 = Math.max(m-lam,0);
+    [[w2,C.accent],[w1,C.orange]].forEach(([w,col])=>{ sctx.beginPath(); sctx.arc(X(lam),Y(w),5.5,0,2*Math.PI); sctx.fillStyle=col; sctx.fill(); });
+    shrOut.innerHTML = `λ = <span class="k">${lam.toFixed(2)}</span> 에서 — L2 w* = <span class="k" style="color:#3b4fd8">${w2.toFixed(3)}</span>, ` +
+      `L1 w* = <span class="k" style="color:#d97d17">${w1.toFixed(3)}</span>` +
+      (w1 === 0 ? ` &nbsp;→ <b>L1 은 정확히 0</b> (λ ≥ m = ${m.toFixed(2)})` : ` &nbsp;→ L1 은 λ = ${m.toFixed(2)} 에서 0이 된다`);
+  }
+  [mSl,lSl].forEach(s=>s.addEventListener("input", drawShr));
+  drawShr();
+
+  /* ---------- 3. 2-D geometry ---------- */
+  const geoCv = document.getElementById("geo-cv"), gctx = setupCanvas(geoCv);
+  const c1Sl = document.getElementById("c1-sl"), c2Sl = document.getElementById("c2-sl"), tSl = document.getElementById("t-sl");
+  const c1Val = document.getElementById("c1-val"), c2Val = document.getElementById("c2-val"), tVal = document.getElementById("t-val");
+  const geoOut = document.getElementById("geo-out");
+  const WT = [1, 3];                       // 손실 = (w1-c1)^2 + 3 (w2-c2)^2  — 타원 등고선
+
+  function loss(w1,w2,c1,c2){ return WT[0]*(w1-c1)*(w1-c1) + WT[1]*(w2-c2)*(w2-c2); }
+
+  function constrained(p, t, c1, c2){
+    // 중심이 공 안이면 중심 자체가 답
+    const inside = Math.pow(Math.pow(Math.abs(c1),p)+Math.pow(Math.abs(c2),p),1/p) <= t;
+    if(inside) return [c1,c2];
+    let best = null, bl = Infinity; const N = 4000;
+    for(let i=0;i<N;i++){
+      const th = 2*Math.PI*i/N, c = Math.cos(th), s = Math.sin(th);
+      const x = t*Math.sign(c)*Math.pow(Math.abs(c),2/p), y = t*Math.sign(s)*Math.pow(Math.abs(s),2/p);
+      const l = loss(x,y,c1,c2); if(l < bl){ bl = l; best = [x,y]; }
+    }
+    return best;
+  }
+
+  function drawGeo(){
+    const c1 = parseFloat(c1Sl.value), c2 = parseFloat(c2Sl.value), t = parseFloat(tSl.value);
+    c1Val.textContent = c1.toFixed(2); c2Val.textContent = c2.toFixed(2); tVal.textContent = t.toFixed(2);
+    const W = geoCv.width, H = geoCv.height, cx = W*0.35, cy = H/2, s = W/6.5;   // 원점을 왼쪽으로 — 오른쪽 등고선이 잘리지 않게
+    const P = (x,y) => [cx + s*x, cy - s*y];
+    gctx.clearRect(0,0,W,H);
+    gctx.strokeStyle = C.line; gctx.lineWidth = 1;
+    gctx.beginPath(); gctx.moveTo(10,cy); gctx.lineTo(W-10,cy); gctx.moveTo(cx,10); gctx.lineTo(cx,H-10); gctx.stroke();
+    gctx.fillStyle = C.muted; gctx.font = "13px Consolas, monospace"; gctx.fillText("w1", W-30, cy-8); gctx.fillText("w2", cx+8, 24);
+    // 등고선
+    gctx.strokeStyle = C.muted; gctx.lineWidth = 1.1;
+    [0.15,0.5,1.1,1.9,2.8].forEach(k=>{
+      gctx.beginPath();
+      for(let i=0;i<=200;i++){ const th=2*Math.PI*i/200; const x=c1+Math.sqrt(k/WT[0])*Math.cos(th), y=c2+Math.sqrt(k/WT[1])*Math.sin(th);
+        const [X,Y]=P(x,y); if(i===0) gctx.moveTo(X,Y); else gctx.lineTo(X,Y); }
+      gctx.stroke();
+    });
+    const [Cx,Cy] = P(c1,c2); gctx.fillStyle = C.ink; gctx.beginPath(); gctx.arc(Cx,Cy,4,0,2*Math.PI); gctx.fill();
+    gctx.font = "12.5px 'Malgun Gothic', sans-serif"; gctx.textAlign = "center";
+    gctx.fillText("벌점 없을 때", Cx, Cy - 12); gctx.textAlign = "left";
+    // 공
+    [[2,C.accent,"rgba(59,79,216,.10)"],[1,C.orange,"rgba(217,125,23,.12)"]].forEach(([p,col,fill])=>{
+      gctx.beginPath();
+      for(let i=0;i<=720;i++){ const th=2*Math.PI*i/720, c=Math.cos(th), sn=Math.sin(th);
+        const x=t*Math.sign(c)*Math.pow(Math.abs(c),2/p), y=t*Math.sign(sn)*Math.pow(Math.abs(sn),2/p);
+        const [X,Y]=P(x,y); if(i===0) gctx.moveTo(X,Y); else gctx.lineTo(X,Y); }
+      gctx.closePath(); gctx.fillStyle = fill; gctx.fill(); gctx.strokeStyle = col; gctx.lineWidth = 2.4; gctx.stroke();
+    });
+    const a2 = constrained(2,t,c1,c2), a1 = constrained(1,t,c1,c2);
+    [[a2,C.accent],[a1,C.orange]].forEach(([a,col])=>{ const [X,Y]=P(a[0],a[1]); gctx.beginPath(); gctx.arc(X,Y,6.5,0,2*Math.PI); gctx.fillStyle=col; gctx.fill(); gctx.strokeStyle="#fff"; gctx.lineWidth=2; gctx.stroke(); });
+    const z = v => Math.abs(v) < 0.005 ? `<b>0</b>` : v.toFixed(3);
+    const zero1 = Math.abs(a1[0])<0.005 || Math.abs(a1[1])<0.005;
+    const zero2 = Math.abs(a2[0])<0.005 || Math.abs(a2[1])<0.005;
+    geoOut.innerHTML =
+      `<div><span style="color:#3b4fd8;font-weight:700">L2 답</span> (${z(a2[0])}, ${z(a2[1])})</div>` +
+      `<div><span style="color:#d97d17;font-weight:700">L1 답</span> (${z(a1[0])}, ${z(a1[1])})</div>` +
+      `<div style="margin-top:8px">${zero1 && !zero2 ? "→ L1 만 한 가중치를 <b>정확히 0</b>으로 만들었다. 마름모의 <b>모서리</b>에 닿았기 때문이다."
+        : zero1 && zero2 ? "→ 두 답 모두 축 위에 있다. 손실 최소점이 처음부터 축 근처라서다."
+        : "→ 이번에는 L1 도 변 위에 닿았다. t 를 줄이거나 w₂ 를 0 쪽으로 옮겨 보자."}</div>` +
+      `<div style="color:#97a3b6;font-size:13.5px;margin-top:8px">손실 = (w₁ − ${c1.toFixed(2)})² + 3(w₂ − ${c2.toFixed(2)})²</div>`;
+  }
+  [c1Sl,c2Sl,tSl].forEach(s=>s.addEventListener("input", drawGeo));
+  drawGeo();
+})();
+</script>
+</body>
+</html>
