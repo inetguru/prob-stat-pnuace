@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>t-test와 Student의 t 분포 — 기네스 양조장에서 온 검정</title>
+<style>
+  :root{
+    --accent:#3b4fd8; --teal:#0d9488; --orange:#d97d17; --purple:#8b5cf6;
+    --pink:#d9457f; --ink:#0f172a; --body:#4b5768; --muted:#97a3b6;
+    --line:#e6eaf1; --soft:#f7f9fc; --warn:#fff7ed;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--body);
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    line-height:1.75; font-size:16px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 26px 96px}
+  h1{font-size:30px; font-weight:800; color:var(--ink); letter-spacing:-.4px; margin:0 0 6px}
+  .sub{color:var(--muted); font-size:15px; margin:0 0 40px}
+  h2{font-size:21px; font-weight:800; color:var(--ink); margin:54px 0 14px;
+     padding-top:22px; border-top:2px solid var(--line)}
+  h3{font-size:16.5px; font-weight:700; color:var(--ink); margin:26px 0 8px}
+  p{margin:12px 0}
+  b,strong{color:var(--ink); font-weight:700}
+  code{background:var(--soft); border:1px solid var(--line); border-radius:4px;
+       padding:1px 5px; font-size:14px; font-family:Consolas,monospace; color:var(--accent)}
+  pre{background:#0f172a; color:#e2e8f0; border-radius:8px; padding:14px 18px; overflow-x:auto;
+      font:13.5px/1.6 Consolas,monospace; margin:16px 0}
+  pre .c{color:#94a3b8}
+  pre .o{color:#5eead4}
+  .eq{background:var(--soft); border-left:3px solid var(--accent); padding:14px 18px;
+      margin:16px 0; border-radius:0 6px 6px 0; font-size:16px; color:var(--ink); overflow-x:auto}
+  .eq .cap{font-size:13.5px; color:var(--muted)}
+  .note{background:var(--warn); border-left:3px solid var(--orange); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .note b{color:#b45309}
+  .link{background:#f5f3ff; border-left:3px solid var(--purple); padding:14px 18px;
+        margin:18px 0; border-radius:0 6px 6px 0; font-size:15px}
+  .link b{color:#6d28d9}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0}
+  .cards.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:8px;
+        padding:14px 16px; font-size:14.5px}
+  .card .lbl{display:table; font-size:11.5px; font-weight:800; letter-spacing:1px;
+             color:var(--accent); background:#eef1fe; border-radius:3px; padding:2px 7px; margin-bottom:7px}
+  .tablewrap{overflow-x:auto; margin:18px 0}
+  table{border-collapse:collapse; width:100%; font-size:14.5px}
+  th,td{border-bottom:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+  th{color:var(--ink); font-weight:700; background:var(--soft)}
+  td.num,th.num{text-align:right; font-family:Consolas,monospace; white-space:nowrap}
+  ul{padding-left:22px} li{margin:6px 0}
+  .timeline{border-left:3px solid var(--line); margin:18px 0 18px 8px; padding-left:20px}
+  .timeline div{position:relative; margin:12px 0; font-size:15px}
+  .timeline div::before{content:""; position:absolute; left:-27px; top:9px; width:11px; height:11px;
+       border-radius:50%; background:var(--accent)}
+  .timeline .y{font-family:Consolas,monospace; color:var(--accent); font-weight:700; margin-right:8px}
+  .viz{border:1px solid var(--line); border-radius:12px; padding:22px; margin:26px 0}
+  .viz h3{margin-top:0}
+  .row{display:flex; flex-wrap:wrap; gap:10px 22px; align-items:flex-end; margin-bottom:12px}
+  .ctl label{display:block; font-size:13.5px; color:var(--ink); font-weight:700; margin-bottom:4px}
+  .ctl .val{font-family:Consolas,monospace; color:var(--accent); margin-left:6px}
+  .ctl input[type=range]{width:260px; max-width:100%; accent-color:var(--accent)}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+  .seg button{background:#fff; color:var(--body); border:0; border-right:1px solid var(--line);
+              padding:7px 13px; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer}
+  .seg button:last-child{border-right:0}
+  .seg button:hover{background:var(--soft)}
+  button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  canvas{max-width:100%; height:auto; display:block}
+  .readout{font-size:14.5px; line-height:1.9}
+  .readout .k{font-family:Consolas,monospace; color:var(--ink); font-weight:700}
+  .tag{display:inline-block; font-size:12px; font-weight:800; color:#6d28d9; background:#f3e8ff;
+       border-radius:3px; padding:1px 7px}
+  .legend{display:flex; flex-wrap:wrap; gap:6px 18px; font-size:13.5px; margin:8px 0 0}
+  .legend span::before{content:""; display:inline-block; width:18px; height:3px; margin-right:6px;
+       vertical-align:middle; background:currentColor}
+  @media (max-width:760px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .wrap{padding:32px 16px 72px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>t-test와 Student의 t 분포 — 기네스 양조장에서 온 검정</h1>
+<p class="sub">
+  확률통계 · Topic 14 보충자료 — 슬라이드 <b>14번 "공식으로 계산하는 검정에는 무엇이 있을까?"</b> ·
+  <b>15번 "t-test는 permutation의 근사다"</b>
+</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="lbl">슬라이드에서 본 것</span>
+    두 강의실 데이터에서 permutation p-value <b>0.0006</b>, t-test p-value <b>0.0005</b>.
+    "t-test는 분포를 시뮬레이션 대신 수식으로 계산한다"는 한 줄.
+  </div>
+  <div class="card">
+    <span class="lbl">이 노트가 답하는 것</span>
+    t 분포는 <b>누가, 왜</b> 만들었나. t 통계량은 <b>무엇을</b> 재는가.
+    왜 정규분포 대신 <b>꼬리가 두꺼운</b> 분포를 쓰는가.
+  </div>
+  <div class="card">
+    <span class="lbl">어디서 이어지는가</span>
+    Topic 7 <b>표준정규분포</b> · Topic 10 <b>CLT와 표준오차</b> ·
+    Topic 12 <b>표본분산의 n − 1</b>. 검정 계열 전체는 2학년
+    <b>「데이터과학입문」</b>에서 다룬다.
+  </div>
+</div>
+
+<h2>1. 기네스 맥주 양조장의 화학자</h2>
+
+<p>
+  t 분포를 만든 사람은 수학자가 아니라 <b>맥주 회사 직원</b>이었다.
+  <b>William Sealy Gosset</b>(윌리엄 실리 고셋, 1876–1937)은 옥스퍼드에서 화학과 수학을 공부하고
+  아일랜드 더블린의 <b>기네스(Guinness) 양조장</b>에 들어갔다.
+</p>
+
+<div class="timeline">
+  <div><span class="y">1899</span>기네스 양조장에 화학자로 입사. 보리·홉·효모의 품질을 관리하는 일을 맡는다.</div>
+  <div><span class="y">1900년대</span>문제에 부딪힌다 — 양조 실험은 한 번에 <b>몇 개의 표본</b>밖에 얻을 수 없다. 당시의 통계 방법은 표본이 크다고 가정했다.</div>
+  <div><span class="y">1906–07</span>런던의 통계학자 Karl Pearson 곁에서 1년간 공부하며 작은 표본의 문제를 연구한다.</div>
+  <div><span class="y">1908</span>논문 <b>"The Probable Error of a Mean"</b>을 학술지 <i>Biometrika</i>에 발표한다. 저자 이름은 본명이 아니라 <b>"Student"</b>였다.</div>
+  <div><span class="y">1920년대</span>R. A. Fisher가 이 분포를 다듬어 기호 <b>t</b>를 붙이고 널리 알린다. 그래서 이름이 <b>Student's t-distribution</b>이 되었다.</div>
+</div>
+
+<h3>왜 "Student"라는 가명을 썼을까</h3>
+<p>
+  기네스는 직원이 연구 결과를 외부에 발표하는 것을 막았다. 흔히 전해지는 이야기로는,
+  <b>품질 관리에 통계 방법을 쓴다는 사실 자체를 경쟁사가 알기를 원하지 않았다</b>고 한다.
+  고셋은 회사의 허락을 받아 본명 대신 "Student(학생)"라는 이름으로 논문을 냈다.
+  오늘날 가장 많이 쓰이는 검정의 이름에 맥주 회사의 영업 비밀이 남아 있는 셈이다.
+</p>
+
+<div class="note">
+  <b>고셋의 진짜 문제는 이것이었다.</b>
+  효모 세포 수나 보리 품질을 재려면 표본을 4~10개 정도밖에 얻을 수 없었다. 그런데 표본 표준편차 <code>s</code>로
+  모집단 표준편차 σ를 대신하고 정규분포를 쓰면, <b>작은 표본에서는 "유의하다"는 결론을 너무 자주 내렸다.</b>
+  t 분포는 그 오차를 바로잡으려고 만든 것이다 — 3절에서 직접 확인한다.
+</div>
+
+<h2>2. t 통계량 — 차이를 잡음으로 나눈다</h2>
+
+<p>두 그룹(각 n개)의 평균을 비교하는 t 통계량은 이렇게 생겼다.</p>
+
+<div class="eq">
+  t = (x̄<sub>B</sub> − x̄<sub>A</sub>) ÷ ( s<sub>p</sub> × √(1/n<sub>A</sub> + 1/n<sub>B</sub>) )
+  <div class="cap">분자 — 관측한 차이 · 분모 — 그 차이가 우연히 흔들리는 크기(표준오차, Topic 10) ·
+  s<sub>p</sub> — 두 그룹을 합친 표준편차 · 자유도 = n<sub>A</sub> + n<sub>B</sub> − 2</div>
+</div>
+
+<p>
+  즉 <b>t = 신호 ÷ 잡음</b>이다. 차이가 그 차이의 흔들림보다 몇 배나 큰지를 잰다.
+  슬라이드 12의 <b>효과크기 d</b>(차이 ÷ 표준편차)와 닮았는데, 두 그룹 크기가 같으면
+  <b>t = d × √(n/2)</b> 관계가 있다 — 같은 효과라도 <b>n 이 커지면 t 가 커진다.</b> p-value가 n에 끌려가는 이유다(슬라이드 19).
+</p>
+
+<h3>두 강의실 데이터로 계산하면</h3>
+
+<div class="tablewrap">
+<table>
+  <tr><th></th><th class="num">강의실 A</th><th class="num">강의실 B</th></tr>
+  <tr><td>표본 크기 n</td><td class="num">25</td><td class="num">25</td></tr>
+  <tr><td>평균 (dB)</td><td class="num">51.79</td><td class="num">54.70</td></tr>
+  <tr><td>표준편차 s (dB)</td><td class="num">2.84</td><td class="num">2.63</td></tr>
+</table>
+</div>
+
+<div class="eq">
+  s<sub>p</sub> = 2.73 · 표준오차 = 2.73 × √(1/25 + 1/25) = 0.773 · <b>t = 2.90 ÷ 0.773 = 3.76</b> · 자유도 48
+  <div class="cap">효과크기 d = 2.90 ÷ 2.73 = 1.06 이므로 t = 1.06 × √12.5 = 3.76 — 같은 값이다</div>
+</div>
+
+<pre><span class="c"># 같은 계산을 SciPy 로 (시드 20260302 · 슬라이드 6의 데이터)</span>
+from scipy import stats
+res = stats.ttest_ind(b, a)          <span class="c"># 두 독립 표본의 t-test</span>
+print(res.statistic, res.pvalue, res.df)
+<span class="o">3.756  0.00047  48.0</span></pre>
+
+<p>
+  p-value <b>0.0005</b> 는 permutation으로 센 <b>0.0006</b> 과 거의 같다.
+  t-test는 "차이가 없다면 t 가 따르는 분포"를 <b>t 분포라는 공식</b>으로 알고 있어서, 만 번 섞지 않고 바로 꼬리 넓이를 읽는다.
+</p>
+
+<h2>3. 왜 정규분포가 아니라 t 분포인가</h2>
+
+<p>
+  σ 를 정확히 안다면 (x̄ − μ)/(σ/√n) 은 표준정규분포를 따른다 — 이것이 <b>z-test</b>다.
+  하지만 σ 대신 표본 표준편차 <code>s</code>를 쓰면, <b>s 자체도 표본마다 흔들린다.</b>
+  분모가 우연히 작게 나오면 t 가 크게 튄다. 그래서 t 분포는 정규분포보다 <b>꼬리가 두껍다.</b>
+  표본이 커지면 s 가 σ 에 가까워지고(Topic 10 LLN), t 분포도 정규분포에 다가간다.
+</p>
+
+<div class="viz">
+  <h3>직접 해보기 — 자유도를 바꾸면 꼬리가 어떻게 변하나</h3>
+  <div class="row">
+    <div class="ctl">
+      <label for="df-sl">자유도 ν (= 표본 크기에 따라 정해진다) <span class="val" id="df-val">4</span></label>
+      <input type="range" id="df-sl" min="1" max="60" step="1" value="4">
+    </div>
+    <div class="seg" role="group" aria-label="자유도 바로 고르기">
+      <button type="button" data-df="2">ν = 2</button>
+      <button type="button" data-df="9">ν = 9</button>
+      <button type="button" data-df="48">ν = 48</button>
+    </div>
+  </div>
+  <canvas id="t-cv" width="900" height="330" aria-label="t 분포와 표준정규분포 비교 그래프"></canvas>
+  <div class="legend"><span style="color:#3b4fd8">Student t (자유도 ν)</span><span style="color:#97a3b6">표준정규분포</span><span style="color:#d97d17">|값| &gt; 1.96 인 꼬리</span></div>
+  <p class="readout" id="t-out"></p>
+</div>
+
+<div class="tablewrap">
+<table>
+  <tr><th class="num">자유도 ν</th><th class="num">양쪽 5% 기준값</th><th class="num">1.96 을 기준으로 쓰면 실제 위양성률</th></tr>
+  <tr><td class="num">2</td><td class="num">4.303</td><td class="num">18.9%</td></tr>
+  <tr><td class="num">4</td><td class="num">2.776</td><td class="num">12.2%</td></tr>
+  <tr><td class="num">9</td><td class="num">2.262</td><td class="num">8.2%</td></tr>
+  <tr><td class="num">24</td><td class="num">2.064</td><td class="num">6.2%</td></tr>
+  <tr><td class="num">48 (두 강의실)</td><td class="num">2.011</td><td class="num">5.6%</td></tr>
+  <tr><td class="num">∞ (정규분포)</td><td class="num">1.960</td><td class="num">5.0%</td></tr>
+</table>
+</div>
+
+<p>
+  표본이 5개(ν = 4)인데 정규분포의 1.96을 기준으로 쓰면, 5%라고 믿은 위양성률이 실제로는 <b>12.2%</b>다.
+  고셋이 양조장에서 부딪힌 문제가 바로 이것이다. 반대로 두 강의실처럼 ν = 48 이면 차이가 거의 없다 —
+  표본이 크면 t-test와 z-test가 사실상 같아진다.
+</p>
+
+<h2>4. t-test 의 종류</h2>
+
+<div class="tablewrap">
+<table>
+  <tr><th>종류</th><th>묻는 것</th><th>예</th><th>SciPy</th></tr>
+  <tr><td><b>일표본</b> (one-sample)</td><td>한 그룹의 평균이 기준값과 다른가</td><td>에너지바의 단백질이 표시대로 20g인가</td><td><code>ttest_1samp</code></td></tr>
+  <tr><td><b>독립 이표본</b> (two-sample)</td><td>서로 다른 두 그룹의 평균이 다른가</td><td>두 강의실의 소음</td><td><code>ttest_ind</code></td></tr>
+  <tr><td><b>대응 표본</b> (paired)</td><td>같은 대상의 전후가 다른가</td><td>같은 학생의 수강 전·후 점수</td><td><code>ttest_rel</code></td></tr>
+</table>
+</div>
+
+<p>
+  두 그룹의 분산이 크게 다르면 <code>ttest_ind(b, a, equal_var=False)</code>, 곧 <b>Welch의 t-test</b>를 쓴다.
+  어느 것을 쓰든 질문은 같다 — <b>"차이가 없다면 이만큼의 t 가 얼마나 드문가."</b>
+</p>
+
+<h2>5. permutation과 t-test, 언제 무엇을</h2>
+
+<div class="cards c2">
+  <div class="card">
+    <span class="lbl">t-test</span>
+    <b>가정</b> — 각 그룹이 대략 정규분포이거나 표본이 충분히 크다(CLT), 관측이 독립이다.<br>
+    <b>장점</b> — 빠르고, 어디서나 통하는 표준 보고 방식이다.
+  </div>
+  <div class="card">
+    <span class="lbl">permutation</span>
+    <b>가정</b> — "차이가 없다면 라벨을 바꿔도 된다"는 것뿐. 분포 모양을 가정하지 않는다.<br>
+    <b>장점</b> — 표본이 작거나 이상치가 있을 때 안전하고, 무엇을 계산하는지가 눈에 보인다.
+  </div>
+</div>
+
+<div class="link">
+  <b>정리.</b> t-test는 컴퓨터가 없던 시절, 만 번 섞는 대신 <b>섞었을 때 나올 분포를 공식으로 예측한 것</b>이다.
+  그 공식은 작은 표본으로 맥주 품질을 판정해야 했던 한 화학자에게서 나왔다.
+  z · t · χ² · F 검정의 조건과 계산은 2학년 <b>「데이터과학입문」</b>에서 본격적으로 다룬다.
+  t·χ²·F 분포의 유도는 <span class="tag">심화 주제</span>다.
+</div>
+
+</div>
+
+<script>
+(function(){
+  const C = {accent:"#3b4fd8", orange:"#d97d17", muted:"#97a3b6", line:"#e6eaf1", ink:"#0f172a", body:"#4b5768"};
+
+  // log-gamma (Lanczos)
+  const G = [676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
+             12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  function lgamma(z){
+    if(z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI*z)) - lgamma(1 - z);
+    z -= 1; let x = 0.99999999999980993;
+    for(let i=0;i<8;i++) x += G[i] / (z + i + 1);
+    const t = z + 7.5;
+    return 0.5*Math.log(2*Math.PI) + (z + 0.5)*Math.log(t) - t + Math.log(x);
+  }
+  function tpdf(x, nu){
+    const c = lgamma((nu+1)/2) - lgamma(nu/2) - 0.5*Math.log(nu*Math.PI);
+    return Math.exp(c - (nu+1)/2 * Math.log(1 + x*x/nu));
+  }
+  function npdf(x){ return Math.exp(-x*x/2) / Math.sqrt(2*Math.PI); }
+  // P(T > c) — x = c/u 로 바꿔 (0,1] 에서 Simpson 적분
+  function ttail(c, nu){
+    const N = 2000; let s = 0;
+    for(let i=0;i<=N;i++){
+      const u = i / N;
+      const f = u === 0 ? 0 : tpdf(c/u, nu) * c / (u*u);
+      s += f * (i===0 || i===N ? 1 : (i%2 ? 4 : 2));
+    }
+    return s / (3*N);
+  }
+
+  const cv = document.getElementById("t-cv"), ctx = cv.getContext("2d");
+  const sl = document.getElementById("df-sl"), val = document.getElementById("df-val"), out = document.getElementById("t-out");
+
+  function draw(){
+    const nu = parseInt(sl.value, 10); val.textContent = nu;
+    const W = cv.width, H = cv.height, L = 40, R = 20, T = 16, B = 40, XM = 5, YM = 0.42;
+    const X = x => L + (W-L-R)*(x + XM)/(2*XM), Y = y => H-B - (H-T-B)*y/YM;
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.fillStyle = C.muted; ctx.font = "13px Consolas, monospace";
+    for(let x=-4; x<=4; x+=2){ ctx.beginPath(); ctx.moveTo(X(x),T); ctx.lineTo(X(x),H-B); ctx.stroke(); ctx.fillText(String(x), X(x)-4, H-B+20); }
+    ctx.beginPath(); ctx.moveTo(L,H-B); ctx.lineTo(W-R,H-B); ctx.stroke();
+    // 꼬리 칠하기 (t)
+    ctx.fillStyle = "rgba(217,125,23,.28)";
+    [[-XM,-1.96],[1.96,XM]].forEach(([a,b])=>{
+      ctx.beginPath(); ctx.moveTo(X(a),Y(0));
+      for(let i=0;i<=100;i++){ const x=a+(b-a)*i/100; ctx.lineTo(X(x),Y(tpdf(x,nu))); }
+      ctx.lineTo(X(b),Y(0)); ctx.closePath(); ctx.fill();
+    });
+    function curve(f, col, w, dash){
+      ctx.beginPath(); for(let i=0;i<=500;i++){ const x=-XM+2*XM*i/500; const y=f(x); if(i===0) ctx.moveTo(X(x),Y(y)); else ctx.lineTo(X(x),Y(y)); }
+      ctx.setLineDash(dash); ctx.strokeStyle=col; ctx.lineWidth=w; ctx.stroke(); ctx.setLineDash([]);
+    }
+    curve(npdf, C.muted, 2.2, [6,5]);
+    curve(x=>tpdf(x,nu), C.accent, 3, []);
+    [-1.96,1.96].forEach(x=>{ ctx.strokeStyle=C.orange; ctx.lineWidth=1.4; ctx.setLineDash([3,4]); ctx.beginPath(); ctx.moveTo(X(x),T); ctx.lineTo(X(x),H-B); ctx.stroke(); ctx.setLineDash([]); });
+    ctx.fillStyle = C.orange; ctx.font = "13px Consolas, monospace"; ctx.fillText("±1.96", X(1.96)+6, T+14);
+    const p = 2*ttail(1.96, nu);
+    out.innerHTML = `자유도 <span class="k">${nu}</span> 에서 |T| &gt; 1.96 일 확률 = <span class="k" style="color:#d97d17">${(100*p).toFixed(1)}%</span>` +
+      ` &nbsp;— 정규분포라면 5.0%. ` + (p > 0.06 ? `정규분포의 기준을 그대로 쓰면 <b>"유의하다"를 너무 자주</b> 말하게 된다.` : `표본이 이만큼 크면 정규분포와 거의 같다.`);
+  }
+  sl.addEventListener("input", draw);
+  document.querySelectorAll("[data-df]").forEach(b=>b.addEventListener("click",()=>{ sl.value=b.dataset.df; draw(); }));
+  draw();
+})();
+</script>
+</body>
+</html>
