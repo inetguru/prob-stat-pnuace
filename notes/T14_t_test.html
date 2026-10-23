@@ -87,8 +87,8 @@
 
 <h1>t-test와 Student의 t 분포 — 기네스 양조장에서 온 검정</h1>
 <p class="sub">
-  확률통계 · Topic 14 보충자료 — 슬라이드 <b>14번 "공식으로 계산하는 검정에는 무엇이 있을까?"</b> ·
-  <b>15번 "t-test는 permutation의 근사다"</b>
+  확률통계 · Topic 14 보충자료 — 슬라이드 <b>16번 "공식으로 계산하는 검정에는 무엇이 있을까?"</b> ·
+  <b>17번 "t-test는 permutation의 근사다"</b>
 </p>
 
 <div class="cards">
@@ -153,8 +153,8 @@
 
 <p>
   즉 <b>t = 신호 ÷ 잡음</b>이다. 차이가 그 차이의 흔들림보다 몇 배나 큰지를 잰다.
-  슬라이드 12의 <b>효과크기 d</b>(차이 ÷ 표준편차)와 닮았는데, 두 그룹 크기가 같으면
-  <b>t = d × √(n/2)</b> 관계가 있다 — 같은 효과라도 <b>n 이 커지면 t 가 커진다.</b> p-value가 n에 끌려가는 이유다(슬라이드 19).
+  슬라이드 14의 <b>효과크기 d</b>(차이 ÷ 표준편차)와 닮았는데, 두 그룹 크기가 같으면
+  <b>t = d × √(n/2)</b> 관계가 있다 — 같은 효과라도 <b>n 이 커지면 t 가 커진다.</b> p-value가 n에 끌려가는 이유다(슬라이드 21).
 </p>
 
 <h3>두 강의실 데이터로 계산하면</h3>
@@ -173,7 +173,7 @@
   <div class="cap">효과크기 d = 2.90 ÷ 2.73 = 1.06 이므로 t = 1.06 × √12.5 = 3.76 — 같은 값이다</div>
 </div>
 
-<pre><span class="c"># 같은 계산을 SciPy 로 (시드 20260302 · 슬라이드 6의 데이터)</span>
+<pre><span class="c"># 같은 계산을 SciPy 로 (시드 20260302 · 슬라이드 7의 데이터)</span>
 from scipy import stats
 res = stats.ttest_ind(b, a)          <span class="c"># 두 독립 표본의 t-test</span>
 print(res.statistic, res.pvalue, res.df)
